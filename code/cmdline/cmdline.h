@@ -69,6 +69,7 @@ extern int Cmdline_noscalevid;	// disables fit-to-window for movies - taylor
 extern int Cmdline_spec;
 extern int Cmdline_normal;
 extern int Cmdline_height;
+extern int Cmdline_relief;
 extern int Cmdline_enable_3d_shockwave;
 extern int Cmdline_softparticles;
 extern int Cmdline_postprocess;

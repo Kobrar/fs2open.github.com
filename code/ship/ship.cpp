@@ -10887,7 +10887,8 @@ void ship_process_targeting_lasers()
 				ship_stop_targeting_laser(shipp);
 			}
 		}
-	}}
+	}
+}
 
 /**
  * Attempt to detonate weapon last fired by *src.

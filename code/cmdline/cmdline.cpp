@@ -268,6 +268,7 @@ cmdline_parm spec_arg("-nospec", NULL);							// Cmdline_spec  --
 cmdline_parm noemissive_arg("-no_emissive_light", NULL);		// Cmdline_no_emissive  -- don't use emissive light in OGL
 cmdline_parm normal_arg("-nonormal", NULL);						// Cmdline_normal  -- disable normal mapping
 cmdline_parm height_arg("-noheight", NULL);						// Cmdline_height  -- enable support for parallax mapping
+cmdline_parm relief_arg("-norelief", NULL);						// Cmdline_relief  -- enable support for parallax occlusion mapping
 cmdline_parm enable_3d_shockwave_arg("-3dshockwave", NULL);
 cmdline_parm softparticles_arg("-soft_particles", NULL);
 cmdline_parm postprocess_arg("-post_process", NULL);
@@ -291,6 +292,7 @@ int Cmdline_spec = 1;
 int Cmdline_no_emissive = 0;
 int Cmdline_normal = 1;
 int Cmdline_height = 1;
+int Cmdline_relief = 1;
 int Cmdline_enable_3d_shockwave = 0;
 int Cmdline_softparticles = 0;
 int Cmdline_postprocess = 0;
@@ -1353,6 +1355,10 @@ bool SetCmdlineParams()
 
 	if ( height_arg.found() ) {
 		Cmdline_height = 0;
+	}
+
+	if ( relief_arg.found() ) {
+		Cmdline_relief = 0;
 	}
 
 	if ( noglsl_arg.found() ) {

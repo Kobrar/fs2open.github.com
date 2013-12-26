@@ -864,6 +864,7 @@ void model_interp_tmappoly(ubyte * p,polymodel * pm)
 				SPECMAP = -1;
 				NORMMAP = -1;
 				HEIGHTMAP = -1;
+				RELIEFMAP = -1;
 				MISCMAP = -1;
 			} else {
 
@@ -957,6 +958,7 @@ void model_interp_tmappoly(ubyte * p,polymodel * pm)
 							SPECMAP = model_interp_get_texture(&tmap->textures[TM_SPECULAR_TYPE], Interp_base_frametime);
 							NORMMAP = model_interp_get_texture(&tmap->textures[TM_NORMAL_TYPE], Interp_base_frametime);
 							HEIGHTMAP = model_interp_get_texture(&tmap->textures[TM_HEIGHT_TYPE], Interp_base_frametime);
+							RELIEFMAP = tmap->relief_map;
 						}
 
 						MISCMAP = model_interp_get_texture(&tmap->textures[TM_MISC_TYPE], Interp_base_frametime);
@@ -1003,7 +1005,7 @@ void model_interp_tmappoly(ubyte * p,polymodel * pm)
 					if(Interp_flags & MR_ALL_XPARENT){
 						gr_set_bitmap( texture, GR_ALPHABLEND_FILTER, GR_BITBLT_MODE_NORMAL, Interp_xparent_alpha );
 					} else {
-						if(tmap->is_transparent) {	//trying to get transperent textures-Bobboau
+						if(tmap->is_transparent) {	//trying to get transparent textures-Bobboau
 							gr_set_bitmap( texture, GR_ALPHABLEND_FILTER, GR_BITBLT_MODE_NORMAL, 0.8f );
 						}else{
 							gr_set_bitmap( texture );
@@ -1032,6 +1034,7 @@ void model_interp_tmappoly(ubyte * p,polymodel * pm)
 	SPECMAP = -1;
 	NORMMAP = -1;
 	HEIGHTMAP = -1;
+	RELIEFMAP = -1;
 	MISCMAP = -1;
 
 	if (Interp_flags & (MR_SHOW_OUTLINE|MR_SHOW_OUTLINE_PRESET) )	{
@@ -3063,6 +3066,7 @@ void model_really_render(int model_num, matrix *orient, vec3d * pos, uint flags,
 			SPECMAP = -1;
 			NORMMAP = -1;
 			HEIGHTMAP = -1;
+			RELIEFMAP = -1;
 			MISCMAP = -1;
 		}
 		ts->transparent_objects.clear();
@@ -4701,7 +4705,7 @@ void model_render_buffers(polymodel *pm, int mn, bool is_child)
 			continue;
 		}
 
-		// trying to get transperent textures-Bobboau
+		// trying to get transparent textures-Bobboau
 		if (tmap->is_transparent) {
 			// for special shockwave/warpmap usage
 			alpha = (Interp_warp_alpha != -1.0f) ? Interp_warp_alpha : 0.8f;

@@ -42,6 +42,7 @@ extern int gr_global_zbuffering;
 #define SDR_FLAG_MISC_MAP		(1<<11)
 #define SDR_FLAG_TEAMCOLOR		(1<<12)
 #define SDR_FLAG_THRUSTER		(1<<13)
+#define SDR_FLAG_RELIEF_MAP		(1<<14)
 
 // stencil buffering stuff
 extern int gr_stencil_mode;

@@ -630,6 +630,7 @@ public:
 
 	bool is_ambient;
 	bool is_transparent;
+	bool relief_map;
 
 	int FindTexture(int bm_handle);
 	int FindTexture(char *name);
@@ -641,7 +642,7 @@ public:
 	void ResetToOriginal();
 
 	texture_map()
-		: is_ambient(false), is_transparent(false)
+		: is_ambient(false), is_transparent(false), relief_map(false)
 	{}
 };
 

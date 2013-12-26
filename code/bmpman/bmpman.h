@@ -269,7 +269,8 @@ extern int GLOWMAP;	//this holds a reference to a map that is a fully lit versio
 extern int SPECMAP;	//this holds a reference to a map that is for specular mapping -Bobboau
 extern int ENVMAP;	//this holds a reference to a map that is for environment mapping -Bobboau
 extern int NORMMAP;	// normal mapping
-extern int HEIGHTMAP;	// height map for normal mapping
+extern int HEIGHTMAP;	// height map for normal mapping as well as parallax
+extern int RELIEFMAP;	// height map for parallax occlusion mapping
 extern int MISCMAP; // Utility map, to be utilized for various things shader authors can come up with
 
 int bm_is_compressed(int num);

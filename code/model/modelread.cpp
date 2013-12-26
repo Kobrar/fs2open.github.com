@@ -2308,6 +2308,9 @@ void model_load_texture(polymodel *pm, int i, char *file)
 	texture_map *tmap = &pm->maps[i];
 	tmap->Clear();
 
+	//Defined now so it can be accessed during texture load
+	int shader_flags = 0;
+
 	//WMC - IMPORTANT!!
 	//The Fred_running checks are there so that FRED will see those textures and put them in the
 	//texture replacement box.
@@ -2387,11 +2390,34 @@ void model_load_texture(polymodel *pm, int i, char *file)
 	if ((!Cmdline_height && !Fred_running) || (tbase->GetTexture() < 0)) {
 		theight->clear();
 	} else {
-		strcpy_s(tmp_name, file);
-		strcat_s(tmp_name, "-height");
-		strlwr(tmp_name);
+		if (Cmdline_relief){
+			//Attemp to load -relief map if found, it's moar important
+			strcpy_s(tmp_name, file);
+			strcat_s(tmp_name, "-relief");
+			strlwr(tmp_name);
+			theight->LoadTexture(tmp_name, pm->filename);
 
-		theight->LoadTexture(tmp_name, pm->filename);
+			//relief map not found, lets go with our usual -height map plan
+			if(theight->GetTexture() <= 0){
+				strcpy_s(tmp_name, file);
+				strcat_s(tmp_name, "-height");
+				strlwr(tmp_name);
+
+				theight->LoadTexture(tmp_name, pm->filename);
+			} else {
+				//Or maybe -relief was found, we need an additional shader flag
+				shader_flags |= SDR_FLAG_RELIEF_MAP;
+				tmap->relief_map = true;
+			}
+		} else {
+			//no relief maps wanted, go with usual -height
+			strcpy_s(tmp_name, file);
+			strcat_s(tmp_name, "-height");
+			strlwr(tmp_name);
+
+			theight->LoadTexture(tmp_name, pm->filename);
+		}
+
 	}
 
 	// Utility map -------------------------------------------------------------
@@ -2406,7 +2432,6 @@ void model_load_texture(polymodel *pm, int i, char *file)
 	// -------------------------------------------------------------------------
 
 	// See if we need to compile a new shader for this material
-	int shader_flags = 0;
 
 	if (tbase->GetTexture() > 0)
 		shader_flags |= SDR_FLAG_DIFFUSE_MAP;

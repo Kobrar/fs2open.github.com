@@ -429,6 +429,7 @@ void opengl_extensions_init()
 	if ( !Use_GLSL ) {
 		Cmdline_normal = 0;
 		Cmdline_height = 0;
+		Cmdline_relief = 0;
 		Cmdline_postprocess = 0;
 	}
 
@@ -441,10 +442,12 @@ void opengl_extensions_init()
 		if (max_texture_units < 6) {
 			mprintf(( "Not enough texture units for height map support. We need at least 6, we found %d.\n", max_texture_units ));
 			Cmdline_height = 0;
+			Cmdline_relief = 0;
 		} else if (max_texture_units < 5) {
 			mprintf(( "Not enough texture units for height and normal map support. We need at least 5, we found %d.\n", max_texture_units ));
 			Cmdline_normal = 0;
 			Cmdline_height = 0;
+			Cmdline_relief = 0;
 		} else if (max_texture_units < 4) {
 			mprintf(( "Not enough texture units found for GLSL support. We need at least 4, we found %d.\n", max_texture_units ));
 			Use_GLSL = 0;

@@ -56,7 +56,8 @@ static opengl_shader_uniform_reference_t GL_Uniform_Reference_Main[] = {
 	{ SDR_FLAG_ANIMATED,	5, {"sFramebuffer", "effect_num", "anim_timer", "vpwidth", "vpheight"}, 0, { NULL }, "Animated Effects" },
 	{ SDR_FLAG_MISC_MAP,	1, {"sMiscmap"}, 0, { NULL }, "Utility mapping" },
 	{ SDR_FLAG_TEAMCOLOR,	2, {"stripe_color", "base_color"}, 0, { NULL }, "Team Colors" },
-	{ SDR_FLAG_THRUSTER,	1, {"thruster_scale"}, 0, { NULL }, "Thruster scaling" }
+	{ SDR_FLAG_THRUSTER,	1, {"thruster_scale"}, 0, { NULL }, "Thruster scaling" },
+	{ SDR_FLAG_RELIEF_MAP,	0, { NULL }, 0, { NULL }, "Parallax Occlusion Mapping" }
 };
 
 static const int Main_shader_flag_references = sizeof(GL_Uniform_Reference_Main) / sizeof(opengl_shader_uniform_reference_t);
@@ -210,6 +211,10 @@ static char *opengl_load_shader(char *filename, int flags)
 
 	if (flags & SDR_FLAG_HEIGHT_MAP) {
 		sflags += "#define FLAG_HEIGHT_MAP\n";
+	}
+
+	if (flags & SDR_FLAG_RELIEF_MAP) {
+		sflags += "#define FLAG_RELIEF_MAP\n";
 	}
 
 	if (flags & SDR_FLAG_LIGHT) {
@@ -392,12 +397,20 @@ Done:
 		if (flags & SDR_FLAG_HEIGHT_MAP) {
 			mprintf(("  Shader in_error!  Disabling height maps!\n"));
 			Cmdline_height = 0;
+			Cmdline_relief = 0;
+			dealt_with = true;
+		}
+
+		if (flags & SDR_FLAG_RELIEF_MAP) {
+			mprintf(("  Shader in_error!  Disabling relief maps!\n"));
+			Cmdline_relief = 0;
 			dealt_with = true;
 		}
 
 		if (flags & SDR_FLAG_NORMAL_MAP) {
 			mprintf(("  Shader in_error!  Disabling normal maps and height maps!\n"));
 			Cmdline_height = 0;
+			Cmdline_relief = 0;
 			Cmdline_normal = 0;
 			dealt_with = true;
 		}
@@ -408,6 +421,7 @@ Done:
 
 				Use_GLSL = 0;
 				Cmdline_height = 0;
+				Cmdline_relief = 0;
 				Cmdline_normal = 0;
 
 				GL_shader.clear();
@@ -418,6 +432,7 @@ Done:
 				mprintf(("  Shader in_error!  Disabling GLSL model rendering!\n"));
 				Use_GLSL = 1;
 				Cmdline_height = 0;
+				Cmdline_relief = 0;
 				Cmdline_normal = 0;
 			}
 		}

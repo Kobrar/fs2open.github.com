@@ -41,6 +41,7 @@ extern int SPECMAP;
 extern int NORMMAP;
 extern int MISCMAP;
 extern int HEIGHTMAP;
+extern int RELIEFMAP;
 extern vec3d G3_user_clip_normal;
 extern vec3d G3_user_clip_point;
 extern int Interp_multitex_cloakmap;
@@ -634,10 +635,14 @@ static void opengl_render_pipeline_program(int start, const vertex_buffer *buffe
 			if ( (NORMMAP > 0) && GL_state.Light(0) && !Normalmap_override ) {
 				shader_flags |= SDR_FLAG_NORMAL_MAP;
 			}
+		}
 
-			if ( (HEIGHTMAP > 0) && !Heightmap_override ) {
-				shader_flags |= SDR_FLAG_HEIGHT_MAP;
-			}
+		if ( (HEIGHTMAP > 0) && !Heightmap_override ) {
+			shader_flags |= SDR_FLAG_HEIGHT_MAP;
+		}
+
+		if ( (RELIEFMAP > 0) && !Heightmap_override ) {
+			shader_flags |= SDR_FLAG_RELIEF_MAP;
 		}
 
 		if (MISCMAP > 0) {
