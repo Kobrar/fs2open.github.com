@@ -355,6 +355,14 @@ void physics_sim_vel(vec3d * position, physics_info * pi, float sim_time, matrix
 	// update world velocity
 	vm_vec_unrotate(&pi->vel, &local_v_out, orient);
 
+	//shamelessly apply gravity
+	if((pi->gravity_scale != 0.0f) && (The_mission.fgrav != 0.0f))
+	{
+		float t = sim_time*sim_time*(pi->gravity_scale)/2.0f;
+		vm_vec_scale_add2(position, &The_mission.vgrav, t*(pi->gravity_scale));
+		vm_vec_scale_add2(&pi->vel, &The_mission.vgrav, sim_time);
+	}
+
 	if (special_warp_in) {
 		vm_vec_rotate(&pi->prev_ramp_vel, &pi->vel, orient);
 	}
@@ -363,20 +371,34 @@ void physics_sim_vel(vec3d * position, physics_info * pi, float sim_time, matrix
 //	-----------------------------------------------------------------------------------------------------------
 // Simulate a physics object for this frame
 void physics_sim(vec3d* position, matrix* orient, physics_info* pi, float sim_time)
-{
-	// check flag which tells us whether or not to do velocity translation
-	if (pi->flags & PF_CONST_VEL) {
-		vm_vec_scale_add2(position, &pi->vel, sim_time);
-	}
-	else
-	{
-		physics_sim_vel(position, pi, sim_time, orient);
-		physics_sim_rot(orient, pi, sim_time);
+{	
+	
+		// check flag which tells us whether or not to do velocity translation
+		if (pi->flags & PF_CONST_VEL) {
+			vm_vec_scale_add2(position, &pi->vel, sim_time);
 
-		pi->speed = vm_vec_mag(&pi->vel);							//	Note, cannot use quick version, causes cumulative error, increasing speed.
-		pi->fspeed = vm_vec_dot(&orient->vec.fvec, &pi->vel);		// instead of vector magnitude -- use only forward vector since we are only interested in forward velocity
-	}
+			//check if gravity apllied
+			if ((pi->gravity_scale != 0.0f) && (The_mission.fgrav != 0.0f)) {
+				float t = sim_time*sim_time*(pi->gravity_scale)/2.0f;
 
+				vm_vec_scale_add2(position, &The_mission.vgrav, t*(pi->gravity_scale));
+				vm_vec_scale_add2(&pi->vel, &The_mission.vgrav, sim_time);
+
+				pi->speed = vm_vec_mag(&pi->vel);							//	Note, cannot use quick version, causes cumulative error, increasing speed.
+				//TBD: adjust orientation here. Too lazy today.
+				pi->fspeed = vm_vec_dot(&orient->vec.fvec, &pi->vel);		// instead of vector magnitude -- use only forward vector since we are only interested in forward velocity
+				
+			}
+		}
+		else
+		{
+			physics_sim_vel(position, pi, sim_time, orient);
+			physics_sim_rot(orient, pi, sim_time);
+				
+			pi->speed = vm_vec_mag(&pi->vel);							//	Note, cannot use quick version, causes cumulative error, increasing speed.
+			pi->fspeed = vm_vec_dot(&orient->vec.fvec, &pi->vel);		// instead of vector magnitude -- use only forward vector since we are only interested in forward velocity
+		}
+	
 }
 
 //	-----------------------------------------------------------------------------------------------------------

@@ -171,6 +171,10 @@ typedef struct mission {
 	// Goober5000
 	ai_profile_t *ai_profile;
 
+	// Kobrar
+	vec3d vgrav;	//gravity vector, alright?
+	float fgrav;	//so that we dont need to do that vm_vec_mag so many times
+
 	SCP_vector<mission_cutscene> cutscenes;
 
 	void Reset( )
@@ -208,6 +212,7 @@ typedef struct mission {
 		substitute_event_music_name[ 0 ] = '\0';
 		substitute_briefing_music_name[ 0 ] = '\0';
 		ai_profile = NULL;
+		vm_vec_zero(&gravity);
 		cutscenes.clear( );
 	}
 

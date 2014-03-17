@@ -49,6 +49,7 @@ typedef struct physics_info {
 	vec3d	max_vel;			//maximum foward velocity in x,y,z
 	vec3d	afterburner_max_vel;	// maximum foward velocity in x,y,z while afterburner engaged
 	vec3d booster_max_vel;
+	float gravity_scale;	//multiplier for gravity vector for this object
 	vec3d	max_rotvel;		//maximum p,b,h rotational velocity
 	float		max_rear_vel;	//maximum velocity in the backwards Z direction
 
