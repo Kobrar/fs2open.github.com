@@ -72,6 +72,8 @@ void physics_init( physics_info * pi )
 	pi->desired_vel.xyz.y = 0.0f;
 	pi->desired_vel.xyz.z = 0.0f;
 
+	pi->gravity_scale = 0.0f;
+
 	pi->slide_accel_time_const=pi->side_slip_time_const;	// slide using max_vel.xyz.x & .xyz.y
 	pi->slide_decel_time_const=pi->side_slip_time_const;	// slide using max_vel.xyz.x & .xyz.y
 

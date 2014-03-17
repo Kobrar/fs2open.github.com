@@ -737,6 +737,8 @@ object *debris_create(object *source_obj, int model_num, int submodel_num, vec3d
 	vm_vec_zero(&pi->max_vel);		// make so he can't turn on his own VOLITION anymore.
 	vm_vec_zero(&pi->max_rotvel);	// make so he can't change speed on his own VOLITION anymore.
 
+	pi->gravity_scale = 1.0f;	//because gravity
+
 	// ensure vel is valid
 	Assert( !vm_is_vec_nan(&obj->phys_info.vel) );
 

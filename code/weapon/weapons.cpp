@@ -842,6 +842,7 @@ void init_weapon_entry(int weap_info_index)
 	wip->mass = 1.0f;
 	wip->max_speed = 10.0f;
 	wip->acceleration_time = 0.0f;
+	wip->gravity_scale = 0.0f;
 	wip->vel_inherit_amount = 1.0f;
 	wip->free_flight_time = 0.0f;
 	wip->fire_wait = 1.0f;
@@ -1338,7 +1339,12 @@ int parse_weapon(int subtype, bool replace)
 
 	if(optional_string("$Velocity:")) {
 		stuff_float( &(wip->max_speed) );
-		diag_printf ("Weapon mass -- %7.3f\n", wip->max_speed);
+		diag_printf ("Weapon max speed -- %7.3f\n", wip->max_speed);
+	}
+
+	if(optional_string("$Gravity Scale:")) {
+		stuff_float( &(wip->gravity_scale) );
+		diag_printf ("Weapon gravity scale -- %7.3f\n", wip->gravity_scale);
 	}
 
 	if(optional_string("$Fire Wait:")) {
@@ -5221,6 +5227,7 @@ int weapon_create( vec3d * pos, matrix * porient, int weapon_type, int parent_ob
 		vm_vec_copy_scale(&objp->phys_info.desired_vel, &objp->orient.vec.fvec, objp->phys_info.max_vel.xyz.z );
 		objp->phys_info.vel = objp->phys_info.desired_vel;
 		objp->phys_info.speed = vm_vec_mag(&objp->phys_info.desired_vel);
+		objp->phys_info.gravity_scale = wip->gravity_scale;
 	} else {		
 		//	For weapons that home, set velocity to sum of forward component of parent's velocity and 1/4 weapon's max speed.
 		//	Note that it is important to extract the forward component of the parent's velocity to factor out sliding, else
@@ -5242,6 +5249,7 @@ int weapon_create( vec3d * pos, matrix * porient, int weapon_type, int parent_ob
 		}
 		objp->phys_info.vel = objp->phys_info.desired_vel;
 		objp->phys_info.speed = vm_vec_mag(&objp->phys_info.vel);
+		objp->phys_info.gravity_scale = 0.0f;	//we dont want homing weapons go crazy because of gravity yet
 	}
 
 	wp->weapon_max_vel = objp->phys_info.max_vel.xyz.z;

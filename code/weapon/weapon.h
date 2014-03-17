@@ -343,6 +343,7 @@ typedef struct weapon_info {
 
 	float	max_speed;							// max speed of the weapon
 	float	acceleration_time;					// how many seconds to reach max speed (secondaries only)
+	float	gravity_scale;
 	float	vel_inherit_amount;					// how much of the parent ship's velocity is inherited (0.0..1.0)
 	float	free_flight_time;
 	float mass;									// mass of the weapon
