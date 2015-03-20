@@ -152,7 +152,7 @@ void hud_tri_empty(float x1,float y1,float x2,float y2,float x3,float y3);
 float hud_find_target_distance( object *targetee, object *targeter );
 
 extern void polish_predicted_target_pos(weapon_info *wip, object *targetp, vec3d *enemy_pos, vec3d *predicted_enemy_pos, float dist_to_enemy, vec3d *last_delta_vec, int num_polish_steps);
-void hud_calculate_lead_pos(vec3d *lead_target_pos, vec3d *target_pos, object *targetp, weapon_info	*wip, float dist_to_target, vec3d *rel_pos = NULL);
+void hud_calculate_lead_pos(vec3d *lead_target_pos, vec3d *target_pos, object *targetp, weapon_info	*wip, vec3d *source_pos, vec3d *rel_pos = NULL);
 
 void hud_stuff_ship_name(char *ship_name_text, ship *shipp);
 void hud_stuff_ship_callsign(char *ship_callsign_text, ship *shipp);

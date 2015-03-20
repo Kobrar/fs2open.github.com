@@ -132,4 +132,8 @@ void fvi_two_lines_in_3space(vec3d *p1, vec3d *v1, vec3d *p2, vec3d *v2, float *
 // return: 1 if inside, 0 otherwise.
 int project_point_onto_bbox(vec3d *mins, vec3d *maxs, vec3d *start, vec3d *box_pt);
 
+
 #endif
+bool solveQuadratic(double &a, double &b, double &c, double &root);
+bool solveCubic(double &a, double &b, double &c, double &d, double &root);
+bool solveQuartic(double &a, double &b, double &c, double &d, double &e, double &root1, double &root2, double &root3, double &root4);

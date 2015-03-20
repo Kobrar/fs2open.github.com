@@ -3373,34 +3373,55 @@ int Debug_k = 0;
  *
  * Return this value.  Return value of 0.0f means no collision is possible.
  */
-float compute_collision_time(vec3d *targpos, vec3d *targvel, vec3d *attackpos, float weapon_speed)
+float compute_collision_time(vec3d *targpos, vec3d *targvel, vec3d *attackpos, float weapon_speed, float fac)
 {
-	vec3d	vec_to_target;
-	float		pos_dot_vel;
-	float		vel_sqr;
-	float		discrim;
 
-	vm_vec_sub(&vec_to_target, targpos, attackpos);
-	pos_dot_vel = vm_vec_dot(&vec_to_target, targvel);
-	vel_sqr = vm_vec_dot(targvel, targvel) - weapon_speed*weapon_speed;
-	discrim = pos_dot_vel*pos_dot_vel - vel_sqr*vm_vec_dot(&vec_to_target, &vec_to_target);
+	if(fac*fac<0.0001f || The_mission.fgrav < 0.01){
+		vec3d	vec_to_target;
+		float		pos_dot_vel;
+		float		vel_sqr;
+		float		discrim;
 
-	if (discrim > 0.0f) {
-		float	t1, t2, t_solve;
+		vm_vec_sub(&vec_to_target, targpos, attackpos);
+		pos_dot_vel = vm_vec_dot(&vec_to_target, targvel);
+		vel_sqr = vm_vec_dot(targvel, targvel) - weapon_speed*weapon_speed;
+		discrim = pos_dot_vel*pos_dot_vel - vel_sqr*vm_vec_dot(&vec_to_target, &vec_to_target);
 
-		t1 = (-pos_dot_vel + fl_sqrt(discrim)) / vel_sqr;
-		t2 = (-pos_dot_vel - fl_sqrt(discrim)) / vel_sqr;
+		if (discrim >= 0.0f) {
+			float	t1, t2, t_solve;
 
-		t_solve = BIGNUM;
+			t1 = (-pos_dot_vel + fl_sqrt(discrim)) / vel_sqr;
+			t2 = (-pos_dot_vel - fl_sqrt(discrim)) / vel_sqr;
 
-		if (t1 > 0.0f)
-			t_solve = t1;
-		if ((t2 > 0.0f) && (t2 < t_solve))
-			t_solve = t2;
+			t_solve = BIGNUM;
 
-		if (t_solve < BIGNUM-1.0f) {
-			return t_solve + Debug_k * flFrametime;
+			if (t1 > 0.0f)
+				t_solve = t1;
+			if ((t2 > 0.0f) && (t2 < t_solve))
+				t_solve = t2;
+
+			if (t_solve < BIGNUM-1.0f) {
+				return t_solve + Debug_k * flFrametime;
+			}
 		}
+	}else{
+		float tt;
+		vec3d P;
+		float	dist;
+
+		dist = vm_vec_dist_quick(attackpos, targpos);
+		tt = dist/weapon_speed;
+
+		for(int i = 0;i<20;++i){
+			vm_vec_scale_add(&P, targpos, targvel, tt);
+			vm_vec_scale_add2(&P, &The_mission.vgrav, -fac*0.5f*tt*tt);
+			dist = vm_vec_dist(attackpos, &P);
+			tt = dist/weapon_speed;
+		}
+
+		if(tt<0.0f)
+			tt=0.0f;
+		return tt;
 	}
 
 	return 0.0f;
@@ -6313,7 +6334,7 @@ weapon_info* ai_get_weapon(ship_weapon *swp)
 //	Also, stuff globals G_predicted_pos, G_collision_time and G_fire_pos.
 //	*pobjp		object firing the weapon
 //	*eobjp		object being fired upon
-void set_predicted_enemy_pos_turret(vec3d *predicted_enemy_pos, vec3d *gun_pos, object *pobjp, vec3d *enemy_pos, vec3d *enemy_vel, float weapon_speed, float time_enemy_in_range)
+void set_predicted_enemy_pos_turret(vec3d *predicted_enemy_pos, vec3d *gun_pos, object *pobjp, vec3d *enemy_pos, vec3d *enemy_vel, float fac, float weapon_speed, float time_enemy_in_range)
 {
 	ship	*shipp = &Ships[pobjp->instance];
 	float	range_time;
@@ -6332,18 +6353,30 @@ void set_predicted_enemy_pos_turret(vec3d *predicted_enemy_pos, vec3d *gun_pos, 
 
 		dist = vm_vec_dist_quick(&pobjp->pos, enemy_pos);
 		vm_vec_scale_add(predicted_enemy_pos, enemy_pos, enemy_vel, time_enemy_in_range * dist/weapon_speed);
+
+		if((The_mission.fgrav > 0.01f)&&( fac > 0.01f)){
+			float collision_time = compute_collision_time(enemy_pos, enemy_vel, gun_pos, weapon_speed, fac);
+
+			if (collision_time == 0.0f){
+				collision_time = 100.0f;
+			}
+			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* collision_time * collision_time / 2.0f);
+		}
 	} else {
 		float	collision_time, scale;
 		vec3d	rand_vec;
 		ai_info	*aip = &Ai_info[shipp->ai_index];
 
-		collision_time = compute_collision_time(enemy_pos, enemy_vel, gun_pos, weapon_speed);
+		collision_time = compute_collision_time(enemy_pos, enemy_vel, gun_pos, weapon_speed, fac);
 
 		if (collision_time == 0.0f){
 			collision_time = 100.0f;
 		}
 
 		vm_vec_scale_add(predicted_enemy_pos, enemy_pos, enemy_vel, collision_time);
+		vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac*collision_time*collision_time/2.0f);
+		
+
 		if (time_enemy_in_range > 2*range_time){
 			scale = (1.0f - aip->ai_accuracy) * 4.0f;
 		} else {
@@ -6366,18 +6399,28 @@ void set_predicted_enemy_pos_turret(vec3d *predicted_enemy_pos, vec3d *gun_pos, 
 //	Return value in *predicted_enemy_pos.
 //	Also, stuff globals G_predicted_pos, G_collision_time and G_fire_pos.
 //SUSHI: Modified to take in a position and accel value instead of reading it directly from the enemy object
-void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, vec3d *enemy_pos, vec3d *enemy_vel, ai_info *aip)
+void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, object *eobjp, ai_info *aip)
 {
 	float	weapon_speed, range_time;
 	ship	*shipp = &Ships[pobjp->instance];
 	weapon_info *wip;
 	vec3d	target_moving_direction;
+	vec3d *enemy_pos = &eobjp->pos;
+	vec3d *enemy_vel = &eobjp->phys_info.vel;
+	float fac1;
+	float fac2;
+	float fac;
 
 	Assert( enemy_pos != NULL );
 	Assert( enemy_vel != NULL );
 
 	wip = ai_get_weapon(&shipp->weapons);
+	fac1 = wip->gravity_scale;
+
 	target_moving_direction = *enemy_vel;
+
+	fac2 = eobjp->phys_info.gravity_scale;
+	fac = fac1 - fac2;
 
 	if (wip != NULL && The_mission.ai_profile->flags & AIPF_USE_ADDITIVE_WEAPON_VELOCITY)
 		vm_vec_scale_sub2(&target_moving_direction, &pobjp->phys_info.vel, wip->vel_inherit_amount);
@@ -6404,6 +6447,16 @@ void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, vec3d *e
 
 		dist = vm_vec_dist_quick(&pobjp->pos, enemy_pos);
 		vm_vec_scale_add(predicted_enemy_pos, enemy_pos, &target_moving_direction, aip->time_enemy_in_range * dist/weapon_speed);
+
+		if((The_mission.fgrav > 0.01f)&&( fac > 0.01f)){
+			/*float collision_time = compute_collision_time(enemy_pos, &target_moving_direction, &pobjp->pos, weapon_speed, fac);
+
+			if (collision_time == 0.0f){
+				collision_time = 100.0f;
+			}
+			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* collision_time * collision_time / 2.0f);*/
+			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* aip->time_enemy_in_range * dist / weapon_speed * aip->time_enemy_in_range * dist / weapon_speed / 2.0f);
+		}
 	} else {
 		float	collision_time;
 		vec3d	gun_pos, pnt;
@@ -6420,14 +6473,15 @@ void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, vec3d *e
 		vm_vec_unrotate(&gun_pos, &pnt, &pobjp->orient);
 		vm_vec_add2(&gun_pos, &pobjp->pos);
 
-		collision_time = compute_collision_time(enemy_pos, &target_moving_direction, &gun_pos, weapon_speed);
+		collision_time = compute_collision_time(enemy_pos, &target_moving_direction, &gun_pos, weapon_speed, fac);
 
 		if (collision_time == 0.0f) {
 			collision_time = 100.0f;
 		}
 
 		vm_vec_scale_add(predicted_enemy_pos, enemy_pos, &target_moving_direction, collision_time);
-
+		vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac*collision_time*collision_time/2.0f);
+		
 		// set globals
 		G_collision_time = collision_time;
 		G_fire_pos = gun_pos;
@@ -8231,7 +8285,7 @@ void ai_chase()
 
 	//	If seeking lock, try to point directly at ship, else predict position so lasers can hit it.
 	//	If just acquired target, or target is not in reasonable cone, don't refine believed enemy position.
-	if ((real_dot_to_enemy < 0.25f) || (aip->target_time < 1.0f) || (aip->ai_flags & AIF_SEEK_LOCK)) {
+	if (((real_dot_to_enemy < 0.25f) && (The_mission.fgrav < 0.01f)) || (aip->target_time < 1.0f) || (aip->ai_flags & AIF_SEEK_LOCK)) {
 		predicted_enemy_pos = enemy_pos;
 	} else {
 		//	Set predicted_enemy_pos.
@@ -8244,15 +8298,15 @@ void ai_chase()
 					predicted_enemy_pos = enemy_pos;
 					predicted_vec_to_enemy = real_vec_to_enemy;
 				} else {
-					set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, &aip->last_aim_enemy_pos, &aip->last_aim_enemy_vel, aip);
+					set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
 					set_target_objnum(aip, -1);
 				}
 
 			} else {
-				set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, &aip->last_aim_enemy_pos, &aip->last_aim_enemy_vel, aip);
+				set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
 			}
 		} else {
-			set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, &aip->last_aim_enemy_pos, &aip->last_aim_enemy_vel, aip);
+			set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
 		}
 	}
 

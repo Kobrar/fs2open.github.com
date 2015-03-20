@@ -46,6 +46,7 @@
 #include "graphics/font.h"
 #include "network/multiutil.h"
 #include "model/model.h"
+#include "ai/ai.h"
 
 // If any of these bits in the ship->flags are set, ignore this ship when targeting
 int TARGET_SHIP_IGNORE_FLAGS = (SF_EXPLODED|SF_DEPART_WARP|SF_DYING|SF_ARRIVING_STAGE_1|SF_HIDDEN_FROM_SENSORS);
@@ -3673,14 +3674,14 @@ void HudGaugeHostileTriangle::render(float frametime)
 	}
 }
 
-void hud_calculate_lead_pos(vec3d *lead_target_pos, vec3d *target_pos, object *targetp, weapon_info	*wip, float dist_to_target, vec3d *rel_pos)
+void hud_calculate_lead_pos(vec3d *lead_target_pos, vec3d *target_pos, object *targetp, weapon_info	*wip, vec3d *source_pos, vec3d *rel_pos)
 {
 	vec3d target_moving_direction;
 	vec3d last_delta_vector;
 	float time_to_target, target_moved_dist;
-
+	float fac = wip->gravity_scale - targetp->phys_info.gravity_scale;
 	if(wip->max_speed != 0) {
-		time_to_target = dist_to_target / wip->max_speed;
+		time_to_target = compute_collision_time(target_pos, &targetp->phys_info.vel, source_pos, wip->max_speed, fac);
 	} else {
 		time_to_target = 0;
 	}
@@ -3694,11 +3695,18 @@ void hud_calculate_lead_pos(vec3d *lead_target_pos, vec3d *target_pos, object *t
 	
 	// test if the target is moving at all
 	if ( vm_vec_mag_quick(&target_moving_direction) < 0.1f ) { // Find distance!
-		*lead_target_pos =  *target_pos;
+		vec3d grav;
+		vm_vec_zero(&grav);
+		vm_vec_scale_add2(&grav, &The_mission.vgrav, -fac*time_to_target*time_to_target/2.0f);
+		vm_vec_add(lead_target_pos, target_pos, &grav );
 	} else {
 		vm_vec_normalize(&target_moving_direction);
 		vm_vec_scale(&target_moving_direction, target_moved_dist);
 		vm_vec_add(lead_target_pos, target_pos, &target_moving_direction );
+		vm_vec_scale_add2(lead_target_pos, &The_mission.vgrav, -fac*time_to_target*time_to_target/2.0f);
+		vec3d dist;
+		vm_vec_sub(&dist,source_pos, target_pos);
+		float dist_to_target =  vm_vec_mag(&dist);
 		polish_predicted_target_pos(wip, targetp, target_pos, lead_target_pos, dist_to_target, &last_delta_vector, 1); // Not used:, float time_to_enemy)
 
 		if(rel_pos) { // needed for quick lead indicators, not needed for normal lead indicators.
@@ -4023,7 +4031,7 @@ void HudGaugeLeadIndicator::renderLeadCurrentTarget()
 		return;
 	}
 
-	hud_calculate_lead_pos(&lead_target_pos, &target_pos, targetp, wip, dist_to_target);
+	hud_calculate_lead_pos(&lead_target_pos, &target_pos, targetp, wip, &source_pos);
 	renderIndicator(frame_offset, targetp, &lead_target_pos);
 
 	//do dumbfire lead indicator - color is orange (255,128,0) - bright, (192,96,0) - dim
@@ -4042,7 +4050,7 @@ void HudGaugeLeadIndicator::renderLeadCurrentTarget()
 			return;
 	}
 
-	hud_calculate_lead_pos(&lead_target_pos, &target_pos, targetp, wip, dist_to_target);
+	hud_calculate_lead_pos(&lead_target_pos, &target_pos, targetp, wip, &source_pos);
 	renderIndicator(0, targetp, &lead_target_pos);
 }
 
@@ -4124,7 +4132,7 @@ void HudGaugeLeadIndicator::renderLeadQuick(vec3d *target_world_pos, object *tar
 		return;
 	}
 
-	hud_calculate_lead_pos(&lead_target_pos, target_world_pos, targetp, wip, dist_to_target, rel_pos);
+	hud_calculate_lead_pos(&lead_target_pos, target_world_pos, targetp, wip, &source_pos, rel_pos);
 	renderIndicator(frame_offset, targetp, &lead_target_pos);
 }
 
@@ -4302,7 +4310,7 @@ void HudGaugeLeadSight::render(float frametime)
 			g3_start_frame(0);
 		}
 
-		hud_calculate_lead_pos(&lead_target_pos, &target_pos, targetp, wip, dist_to_target);
+		hud_calculate_lead_pos(&lead_target_pos, &target_pos, targetp, wip, &source_pos);
 		renderSight(1, &target_pos, &lead_target_pos); // render the primary weapon lead sight
 
 		if(!in_frame) {
@@ -4339,7 +4347,7 @@ void HudGaugeLeadSight::render(float frametime)
 		
 	//give it the "in secondary range frame
 
-	hud_calculate_lead_pos(&lead_target_pos, &target_pos, targetp, wip, dist_to_target);
+	hud_calculate_lead_pos(&lead_target_pos, &target_pos, targetp, wip, &source_pos);
 	renderSight(0, &target_pos, &lead_target_pos); // now render the secondary weapon lead sight
 
 	if(!in_frame) {

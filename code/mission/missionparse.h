@@ -212,7 +212,8 @@ typedef struct mission {
 		substitute_event_music_name[ 0 ] = '\0';
 		substitute_briefing_music_name[ 0 ] = '\0';
 		ai_profile = NULL;
-		vm_vec_zero(&gravity);
+		vm_vec_zero(&vgrav);
+		fgrav = 0;
 		cutscenes.clear( );
 	}
 
@@ -653,7 +654,6 @@ void clear_texture_replacements();
 
 // Goober5000
 subsys_status *parse_get_subsys_status(p_object *pobjp, char *subsys_name);
-
 
 #endif
 

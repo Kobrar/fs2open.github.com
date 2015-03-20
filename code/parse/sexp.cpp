@@ -551,6 +551,7 @@ sexp_oper Operators[] = {
 	{ "change-player-score",			OP_CHANGE_PLAYER_SCORE,					2,	INT_MAX,	SEXP_ACTION_OPERATOR,	},	// Karajorma
 	{ "change-team-score",				OP_CHANGE_TEAM_SCORE,					2,	2,			SEXP_ACTION_OPERATOR,	},	// Karajorma
 	{ "set-respawns",					OP_SET_RESPAWNS,						2,	INT_MAX,	SEXP_ACTION_OPERATOR,	},	// Karajorma
+	{ "set-gravity-vector",				OP_SET_GRAVITY_VECTOR,					3,	3,			SEXP_ACTION_OPERATOR,	},	// Kobrar
 
 	//Music and Sound Sub-Category
 	{ "change-soundtrack",				OP_CHANGE_SOUNDTRACK,					1,	1,			SEXP_ACTION_OPERATOR,	},	// Goober5000	
@@ -14361,6 +14362,16 @@ void sexp_ship_vanish(int n)
 	}
 }
 
+//Kobrar
+void sexp_set_mission_grav_vector(int n)
+{
+	The_mission.vgrav.xyz.x = (float)(eval_num(n))/1000.0f;
+	n = CDR(n);
+	The_mission.vgrav.xyz.y = (float)(eval_num(n))/1000.0f;
+	n = CDR(n);
+	The_mission.vgrav.xyz.z = (float)(eval_num(n))/1000.0f;
+	The_mission.fgrav = sqrt(vm_vec_dot(&The_mission.vgrav, &The_mission.vgrav));
+}
 void sexp_destroy_instantly(int n)
 {
 	char *ship_name;
@@ -23036,6 +23047,12 @@ int eval_sexp(int cur_node, int referenced_node)
 				sexp_ignore_key(node);
 				sexp_val = SEXP_TRUE;
 				break;
+			
+			//Kobrar
+			case OP_SET_GRAVITY_VECTOR:
+				sexp_set_mission_grav_vector (node);
+				sexp_val = SEXP_TRUE;
+				break;
 
 			// Goober5000 - sigh, was this messed up all along?
 			case OP_WARP_BROKEN:
@@ -25046,6 +25063,7 @@ int query_operator_return_type(int op)
 		case OP_COPY_VARIABLE_BETWEEN_INDEXES:
 		case OP_SET_ETS_VALUES:
 		case OP_CALL_SSM_STRIKE:
+		case OP_SET_GRAVITY_VECTOR:
 			return OPR_NULL;
 
 		case OP_AI_CHASE:
@@ -26000,6 +26018,9 @@ int query_operator_argument_type(int op, int argnum)
 				return OPF_IFF;
 			else
 				return OPF_SHIP;
+
+		case OP_SET_GRAVITY_VECTOR:
+			return OPF_NUMBER;
 
 		case OP_SELF_DESTRUCT:
 			return OPF_SHIP;
@@ -28654,6 +28675,7 @@ int get_subcategory(int sexp_id)
 		case OP_CHANGE_PLAYER_SCORE:
 		case OP_CHANGE_TEAM_SCORE:
 		case OP_SET_RESPAWNS:
+		case OP_SET_GRAVITY_VECTOR:
 			return CHANGE_SUBCATEGORY_MISSION_AND_CAMPAIGN;
 
 		case OP_CHANGE_SOUNDTRACK:
@@ -31857,6 +31879,15 @@ sexp_help_struct Sexp_help[] = {
 		"\t1: Red (0 - 255).\r\n"
 		"\t2: Green (0 - 255).\r\n"
 		"\t3: Blue (0 - 255)."
+	},
+
+	//Kobrar
+	{ OP_SET_GRAVITY_VECTOR, "set-mission-grav-vector\r\n"
+		"\tSets the gravity vector to a given vector\r\n"
+		"\tTakes 3 arguments\r\n"
+		"\t1: x component * 1000\r\n"
+		"\t2: y component * 1000\r\n"
+		"\t3: z component * 1000\r\n"
 	},
 
 	{ OP_SET_POST_EFFECT, "set-post-effect\r\n"

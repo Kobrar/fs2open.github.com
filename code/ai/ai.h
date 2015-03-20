@@ -686,13 +686,14 @@ extern int ai_fire_secondary_weapon(object *objp, int priority1 = -1, int priori
 extern float ai_get_weapon_dist(ship_weapon *swp);
 extern void turn_towards_point(object *objp, vec3d *point, vec3d *slide_vec, float bank_override);
 extern int ai_maybe_fire_afterburner(object *objp, ai_info *aip);
-extern void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, vec3d *enemy_pos, vec3d *enemy_vel, ai_info *aip);
+extern void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, object *eobjp, ai_info *aip);
 
 extern int is_instructor(object *objp);
 extern int find_enemy(int objnum, float range, int max_attackers);
 
 float ai_get_weapon_speed(ship_weapon *swp);
-void set_predicted_enemy_pos_turret(vec3d *predicted_enemy_pos, vec3d *gun_pos, object *pobjp, vec3d *enemy_pos, vec3d *enemy_vel, float weapon_speed, float time_enemy_in_range);
+void set_predicted_enemy_pos_turret(vec3d *predicted_enemy_pos, vec3d *gun_pos, object *pobjp, vec3d *enemy_pos, vec3d *enemy_vel, float gravfactor, float weapon_speed, float time_enemy_in_range);
+float compute_collision_time(vec3d *targpos, vec3d *targvel, vec3d *attackpos, float weapon_speed, float fac);
 
 // function to change rearm status for ai ships (called from sexpression code)
 extern void ai_set_rearm_status( int team, int new_status );

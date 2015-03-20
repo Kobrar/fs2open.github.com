@@ -876,7 +876,7 @@ void ai_big_chase()
 
 	//	Compute the predicted position of the center of the ship, then add the delta to the goal pos.
 	if (En_objp->phys_info.speed > 3.0f) {
-		set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, &En_objp->pos, &En_objp->phys_info.vel, aip);
+		set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
 		vm_vec_add2(&enemy_pos, &predicted_enemy_pos);
 		vm_vec_sub2(&enemy_pos, &En_objp->pos);
 	}	else
@@ -1223,8 +1223,10 @@ void ai_big_attack_get_data(vec3d *enemy_pos, float *dist_to_enemy, float *dot_t
 			vm_vec_copy_scale(&pnt, &Ship_info[shipp->ship_info_index].convergence_offset, 1.0f);	
 		}
 		weapon_speed = ai_get_weapon_speed(&shipp->weapons);
-		
-		set_predicted_enemy_pos_turret(&predicted_enemy_pos, &gun_pos, Pl_objp, enemy_pos, &En_objp->phys_info.vel, weapon_speed, aip->time_enemy_in_range);
+
+		weapon_info wip = Weapon_info[shipp->weapons.primary_bank_weapons[shipp->weapons.current_primary_bank]];
+
+		set_predicted_enemy_pos_turret(&predicted_enemy_pos, &gun_pos, Pl_objp, enemy_pos, &En_objp->phys_info.vel, wip.gravity_scale - En_objp->phys_info.gravity_scale, weapon_speed, aip->time_enemy_in_range);
 	}
 
 	*dist_to_enemy = vm_vec_normalized_dir(&vec_to_enemy, &predicted_enemy_pos, &player_pos);
@@ -1494,7 +1496,7 @@ void ai_big_strafe_glide_attack()
 		afterburners_stop(Pl_objp);
 
 		//Compensate for motion of ship and target
-		set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, &En_objp->pos, &En_objp->phys_info.vel, aip);
+		set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
 		vm_vec_add2(&target_pos, &predicted_enemy_pos);
 		vm_vec_sub2(&target_pos, &En_objp->pos);
 

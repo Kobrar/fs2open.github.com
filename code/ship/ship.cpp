@@ -10639,7 +10639,7 @@ int ship_fire_primary(object * obj, int stream_weapons, int force)
 								}
 
 								if (target != NULL) {
-									set_predicted_enemy_pos(&predicted_pos, obj, &target->pos, &target->phys_info.vel, aip);
+									set_predicted_enemy_pos(&predicted_pos, obj, target, aip);
 									range_to_target=vm_vec_dist(&predicted_pos, &obj->pos);
 								}
 
