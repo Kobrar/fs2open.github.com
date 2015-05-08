@@ -6449,13 +6449,18 @@ void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, object *
 		vm_vec_scale_add(predicted_enemy_pos, enemy_pos, &target_moving_direction, aip->time_enemy_in_range * dist/weapon_speed);
 
 		if((The_mission.fgrav > 0.01f)&&( fac > 0.01f)){
-			/*float collision_time = compute_collision_time(enemy_pos, &target_moving_direction, &pobjp->pos, weapon_speed, fac);
+			float collision_time = compute_collision_time(enemy_pos, &target_moving_direction, &pobjp->pos, weapon_speed, fac);
 
 			if (collision_time == 0.0f){
 				collision_time = 100.0f;
 			}
-			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* collision_time * collision_time / 2.0f);*/
-			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* aip->time_enemy_in_range * dist / weapon_speed * aip->time_enemy_in_range * dist / weapon_speed / 2.0f);
+			ved3d temp_predicted_pos;
+			vm_vec_scale_add(temp_predicted_pos, enemy_pos, &target_moving_direction, collision_time);
+			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* collision_time * collision_time / 2.0f);
+
+
+			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* collision_time * collision_time / 2.0f);
+
 		}
 	} else {
 		float	collision_time;
@@ -6519,7 +6524,7 @@ void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, object *
 	// get a random vector that changes slowly over time (1x / sec)
 	static_randvec(((pobjp-Objects) ^ (Missiontime >> 16)) & 7, &rand_vec);
 
-	vm_vec_scale_add2(predicted_enemy_pos, &rand_vec, scale);
+	/*vm_vec_scale_add2(predicted_enemy_pos, &rand_vec, scale);*/
 
 	// set global
 	G_predicted_pos = *predicted_enemy_pos;
@@ -8294,9 +8299,17 @@ void ai_chase()
 			Assert(En_objp->type == OBJ_SHIP);
 			if (get_shield_pct(En_objp) < HULL_DAMAGE_THRESHOLD_PERCENT) {
 				if (aip->targeted_subsys != NULL) {
-					get_subsystem_pos(&enemy_pos, En_objp, aip->targeted_subsys);
-					predicted_enemy_pos = enemy_pos;
-					predicted_vec_to_enemy = real_vec_to_enemy;
+					if (The_mission.fgrav < 0.01f){
+						get_subsystem_pos(&enemy_pos, En_objp, aip->targeted_subsys);
+						predicted_enemy_pos = enemy_pos;
+						predicted_vec_to_enemy = real_vec_to_enemy;
+					} else {
+						get_subsystem_pos(&enemy_pos, En_objp, aip->targeted_subsys);
+						vec3d temp;
+						vm_vec_sub(&temp, &enemy_pos, &En_objp->pos);
+						set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
+						vm_vec_add(&predicted_enemy_pos, &predicted_enemy_pos, &temp);
+					}
 				} else {
 					set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
 					set_target_objnum(aip, -1);
