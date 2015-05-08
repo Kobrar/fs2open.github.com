@@ -171,7 +171,7 @@ void ai_post_process_mission()
 		// Goober5000 - MK originally iterated on only the first wing; now we iterate on only the player wing
 		// because the player wing may not be first
 		for ( i = 0; i < MAX_STARTING_WINGS; i++ ) {	
-			if ( Starting_wings[i] == Player_ship->wingnum ) {
+			if (Starting_wings[i] >= 0 && Starting_wings[i] == Player_ship->wingnum) {
 				wing *wingp;
 
 				wingp = &Wings[Starting_wings[i]];
@@ -528,7 +528,7 @@ int ai_goal_find_dockpoint(int shipnum, int dock_type)
 }
 
 // function to fix up dock point references for objects.
-// passed are the pointer to goal we are working with.  aip if the ai_info pointer
+// passed are the pointer to goal we are working with.  aip is the ai_info pointer
 // of the ship with the order.  aigp is a pointer to the goal (of aip) of which we are
 // fixing up the docking points
 void ai_goal_fixup_dockpoints(ai_info *aip, ai_goal *aigp)
@@ -537,6 +537,7 @@ void ai_goal_fixup_dockpoints(ai_info *aip, ai_goal *aigp)
 
 	Assert ( aip->shipnum != -1 );
 	shipnum = ship_name_lookup( aigp->target_name );
+	Assertion ( shipnum != -1, "Couldn't find ai goal's target_name (%s); get a coder!\n", aigp->target_name );
 	docker_index = -1;
 	dockee_index = -1;
 
@@ -979,6 +980,16 @@ void ai_add_goal_sub_sexp( int sexp, int type, ai_goal *aigp, char *actor_name )
 		aigp->priority = MAX_GOAL_PRIORITY;
 	}
 
+	// Goober5000 - we now have an extra optional chase argument to allow chasing our own team
+	if ( op == OP_AI_CHASE || op == OP_AI_CHASE_WING || op == OP_AI_DISABLE_SHIP || op == OP_AI_DISARM_SHIP ) {
+		if ((CDDDR(node) != -1) && is_sexp_true(CDDDR(node)))
+			aigp->flags |= AIGF_TARGET_OWN_TEAM;
+	}
+	if ( op == OP_AI_DESTROY_SUBSYS ) {
+		if ((CDDDDR(node) != -1) && is_sexp_true(CDDDDR(node)))
+			aigp->flags |= AIGF_TARGET_OWN_TEAM;
+	}
+
 	// Goober5000 - since none of the goals act on the actor,
 	// don't assign the goal if the actor's goal target is itself
 	if (aigp->target_name != NULL && !strcmp(aigp->target_name, actor_name))
@@ -1374,13 +1385,17 @@ int ai_mission_goal_achievable( int objnum, ai_goal *aigp )
 		if (!(shipp->flags2 & SF2_NO_SUBSPACE_DRIVE))
 			return AI_GOAL_ACHIEVABLE;
 
-		// if no subspace drive, only valid if there's somewhere to depart to
+		// if no subspace drive, only valid if our mothership is present
 
-		// locate a capital ship on the same team:
-		if (ship_get_ship_with_dock_bay(shipp->team) >= 0)
-			return AI_GOAL_ACHIEVABLE;
-		else
-			return AI_GOAL_NOT_KNOWN;
+		// check that we have a mothership and that we can depart to it
+		if (shipp->departure_location == DEPART_AT_DOCK_BAY)
+		{
+			int anchor_shipnum = ship_name_lookup(Parse_names[shipp->departure_anchor]);
+			if (anchor_shipnum >= 0 && ship_useful_for_departure(anchor_shipnum, shipp->departure_path_mask))
+				return AI_GOAL_ACHIEVABLE;
+		}
+
+		return AI_GOAL_NOT_KNOWN;
 	}
 
 
