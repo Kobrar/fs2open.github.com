@@ -1096,7 +1096,7 @@ void hud_target_subobject_common(int next_flag)
 	target_shipp = &Ships[Objects[Player_ai->target_objnum].instance];
 
 	if (!Player_ai->targeted_subsys) {
-		start = GET_FIRST(&target_shipp->subsys_list);
+		start = END_OF_LIST(&target_shipp->subsys_list);
 	} else {
 		start = Player_ai->targeted_subsys;
 	}
@@ -7133,7 +7133,6 @@ void HudGaugeHardpoints::render(float frametime)
 		g3_start_frame(1);
 	hud_save_restore_camera_data(1);
 	setClip(sx, sy, _size[0], _size[1]);
-	model_set_detail_level(1);
 
 	g3_set_view_matrix( &sip->closeup_pos, &vmd_identity_matrix, sip->closeup_zoom*1.5f);
 
@@ -7145,31 +7144,36 @@ void HudGaugeHardpoints::render(float frametime)
 	setGaugeColor();
 
 	//We're ready to show stuff
+	model_render_params render_info;
 	
+	int detail_level_lock = 1;
 	int cull = gr_set_cull(0);
 	gr_stencil_clear();
 	gr_stencil_set(GR_STENCIL_WRITE);
 	int zbuffer = gr_zbuffer_set(GR_ZBUFF_NONE);
 	gr_set_color_buffer(0);
 
+	render_info.set_color(gauge_color);
+	render_info.set_detail_level_lock(detail_level_lock);
+	render_info.set_flags(MR_NO_LIGHTING | MR_AUTOCENTER | MR_NO_FOGGING | MR_NO_TEXTURING | MR_NO_CULL);
+
 	ship_model_start(objp);
-	model_render( sip->model_num, &object_orient, &vmd_zero_vector, MR_NO_LIGHTING | MR_LOCK_DETAIL | MR_AUTOCENTER | MR_NO_FOGGING | MR_NO_TEXTURING | MR_NO_CULL);
+	model_render_immediate( &render_info, sip->model_num, &object_orient, &vmd_zero_vector);
 
 	gr_set_color_buffer(1);
 	gr_stencil_set(GR_STENCIL_READ);
 	gr_set_cull(cull);
 	gr_set_line_width(_line_width*2.0f);
 
-	model_set_alpha( gr_screen.current_color.alpha / 255.0f );
-	model_set_forced_texture(0);
+	//model_set_alpha( gr_screen.current_color.alpha / 255.0f );
+	//model_set_forced_texture(0);
+	render_info.set_flags(MR_NO_LIGHTING | MR_AUTOCENTER | MR_NO_FOGGING | MR_NO_TEXTURING | MR_SHOW_OUTLINE_HTL | MR_NO_POLYS | MR_NO_ZBUFFER | MR_NO_CULL);
 
-	model_set_outline_color_fast(&gauge_color);
-
-	model_render( 
+	model_render_immediate( 
+		&render_info,
 		sip->model_num, 
 		&object_orient, 
-		&vmd_zero_vector, 
-		MR_NO_LIGHTING | MR_LOCK_DETAIL | MR_AUTOCENTER | MR_NO_FOGGING | MR_NO_TEXTURING | MR_SHOW_OUTLINE_HTL | MR_NO_POLYS | MR_NO_ZBUFFER | MR_NO_CULL | MR_ALL_XPARENT
+		&vmd_zero_vector
 	);
 	ship_model_stop( objp );
 
@@ -7184,10 +7188,10 @@ void HudGaugeHardpoints::render(float frametime)
 	vec3d subobj_pos;
 	g3_start_instance_matrix(&vmd_zero_vector, &object_orient, true);
 
-	int render_flags = MR_NO_LIGHTING | MR_LOCK_DETAIL | MR_AUTOCENTER | MR_NO_FOGGING | MR_NO_TEXTURING | MR_NO_ZBUFFER;
+	int render_flags = MR_NO_LIGHTING | MR_AUTOCENTER | MR_NO_FOGGING | MR_NO_TEXTURING | MR_NO_ZBUFFER;
 
 	setGaugeColor();
-	model_set_alpha( gr_screen.current_color.alpha / 255.0f );
+	float alpha = gr_screen.current_color.alpha / 255.0f;
 
 	//secondary weapons
 	int num_secondaries_rendered = 0;
@@ -7203,7 +7207,12 @@ void HudGaugeHardpoints::render(float frametime)
 
 			if (Weapon_info[swp->secondary_bank_weapons[i]].wi_flags2 & WIF2_EXTERNAL_WEAPON_LNCH) {
 				for(k = 0; k < bank->num_slots; k++) {
-					model_render(Weapon_info[swp->secondary_bank_weapons[i]].external_model_num, &vmd_identity_matrix, &bank->pnt[k], render_flags);
+					model_render_params weapon_render_info;
+
+					weapon_render_info.set_detail_level_lock(detail_level_lock);
+					weapon_render_info.set_flags(render_flags);
+
+					model_render_immediate(&weapon_render_info, Weapon_info[swp->secondary_bank_weapons[i]].external_model_num, &vmd_identity_matrix, &bank->pnt[k]);
 				}
 			} else {
 				num_secondaries_rendered = 0;
@@ -7214,29 +7223,32 @@ void HudGaugeHardpoints::render(float frametime)
 
 					if (num_secondaries_rendered >= sp->weapons.secondary_bank_ammo[i])
 						break;
-
+					 
 					if(sp->secondary_point_reload_pct[i][k] <= 0.0)
 						continue;
 
+					model_render_params weapon_render_info;
+
 					if ( swp->current_secondary_bank == i && ( swp->secondary_next_slot[i] == k || ( swp->secondary_next_slot[i]+1 == k && sp->flags & SF_SECONDARY_DUAL_FIRE ) ) ) {
-						gr_set_color_fast(&Color_bright_blue);
+						weapon_render_info.set_color(Color_bright_blue);
 					} else {
-						gr_set_color_fast(&Color_bright_white);
-						
+						weapon_render_info.set_color(Color_bright_white);
 					}
 
 					num_secondaries_rendered++;
 
 					vm_vec_scale_add2(&secondary_weapon_pos, &vmd_z_vector, -(1.0f-sp->secondary_point_reload_pct[i][k]) * model_get(Weapon_info[swp->secondary_bank_weapons[i]].external_model_num)->rad);
 
-					model_render(Weapon_info[swp->secondary_bank_weapons[i]].external_model_num, &vmd_identity_matrix, &secondary_weapon_pos, render_flags);
+					weapon_render_info.set_detail_level_lock(detail_level_lock);
+					weapon_render_info.set_flags(render_flags);
+
+					model_render_immediate(&weapon_render_info, Weapon_info[swp->secondary_bank_weapons[i]].external_model_num, &vmd_identity_matrix, &secondary_weapon_pos);
 				}
 			}
 		}
 	}
 	g3_done_instance(true);
 	resetClip();
-	model_set_forced_texture(0);
 
 	setGaugeColor(HUD_C_BRIGHT);
 
@@ -7263,8 +7275,15 @@ void HudGaugeHardpoints::render(float frametime)
 					//renderCircle(xc, yc, 25);
 				} else {
 					polymodel* pm = model_get(Weapon_info[swp->primary_bank_weapons[i]].external_model_num);
+					
+
+					model_render_params weapon_render_info;
+					weapon_render_info.set_detail_level_lock(detail_level_lock);
+					weapon_render_info.set_flags(render_flags);
+					weapon_render_info.set_alpha(alpha);
+
 					pm->gun_submodel_rotation = sp->primary_rotate_ang[i];
-					model_render(Weapon_info[swp->primary_bank_weapons[i]].external_model_num, &vmd_identity_matrix, &bank->pnt[k], render_flags);
+					model_render_immediate(&weapon_render_info, Weapon_info[swp->primary_bank_weapons[i]].external_model_num, &vmd_identity_matrix, &bank->pnt[k]);
 					pm->gun_submodel_rotation = 0.0f;
 				}
 			}

@@ -2892,6 +2892,25 @@ ADE_FUNC(isGliding, l_Physics, NULL, "True if glide mode is on, false or nil if 
 		return ade_set_args(L, "b",  false);
 }
 
+ADE_FUNC(applyWhack, l_Physics, "vector Impulse, [ vector Position]", "Applies a whack to an object at a position (a local vector) based on impulse supplied (a world vector). If no position is supplied, an empty vector is used.", "boolean", "true if it succeeded, false otherwise")
+ {
+	object_h objh;
+	physics_info_h *pih;
+	vec3d *impulse;
+	vec3d *offset = &vmd_zero_vector;
+	
+	if (!ade_get_args(L, "oo|o", l_Physics.GetPtr(&pih), l_Vector.GetPtr(&impulse), l_Vector.GetPtr(&offset)))
+		return ADE_RETURN_NIL;
+	
+	objh = pih->objh;
+	
+	physics_apply_whack(impulse, offset, pih->pi, &objh.objp->orient, pih->pi->mass);
+	
+	return ADE_RETURN_TRUE;
+	
+}
+
+
 //**********HANDLE: sexpvariable
 struct sexpvar_h
 {
@@ -6040,9 +6059,10 @@ ADE_FUNC(renderTechModel, l_Shipclass, "X1, Y1, X2, Y2, [Rotation %=0, Pitch %=0
     CLAMP(rot_angles.h, 0.0f, 100.0f);
 
 	ship_info *sip = &Ship_info[idx];
+	model_render_params render_info;
 
 	if (sip->uses_team_colors) {
-		gr_set_team_color(sip->default_team_name, "none", 0, 0);
+		render_info.set_team_color(sip->default_team_name, "none", 0, 0);
 	}
 
 	//Make sure model is loaded
@@ -6080,14 +6100,16 @@ ADE_FUNC(renderTechModel, l_Shipclass, "X1, Y1, X2, Y2, [Rotation %=0, Pitch %=0
 
 	//Draw the ship!!
 	model_clear_instance(sip->model_num);
-	model_set_detail_level(0);
+	render_info.set_detail_level_lock(0);
 
-	uint render_flags = MR_LOCK_DETAIL | MR_AUTOCENTER | MR_NO_FOGGING;
+	uint render_flags = MR_AUTOCENTER | MR_NO_FOGGING;
 
 	if(sip->flags2 & SIF2_NO_LIGHTING)
 		render_flags |= MR_NO_LIGHTING;
 
-	model_render(sip->model_num, &orient, &vmd_zero_vector, render_flags);
+	render_info.set_flags(render_flags);
+
+	model_render_immediate(&render_info, sip->model_num, &orient, &vmd_zero_vector);
 
 	//OK we're done
 	gr_end_view_matrix();
@@ -6096,7 +6118,6 @@ ADE_FUNC(renderTechModel, l_Shipclass, "X1, Y1, X2, Y2, [Rotation %=0, Pitch %=0
 	//Bye!!
 	g3_end_frame();
 	gr_reset_clip();
-	gr_disable_team_color();
 
 	return ade_set_args(L, "b", true);
 }
@@ -6118,9 +6139,10 @@ ADE_FUNC(renderTechModel2, l_Shipclass, "X1, Y1, X2, Y2, [orientation Orientatio
 		return ade_set_args(L, "b", false);
 
 	ship_info *sip = &Ship_info[idx];
+	model_render_params render_info;
 
 	if (sip->uses_team_colors) {
-		gr_set_team_color(sip->default_team_name, "none", 0, 0);
+		render_info.set_team_color(sip->default_team_name, "none", 0, 0);
 	}
 
 	//Make sure model is loaded
@@ -6151,14 +6173,16 @@ ADE_FUNC(renderTechModel2, l_Shipclass, "X1, Y1, X2, Y2, [orientation Orientatio
 
 	//Draw the ship!!
 	model_clear_instance(sip->model_num);
-	model_set_detail_level(0);
+	render_info.set_detail_level_lock(0);
 
-	uint render_flags = MR_LOCK_DETAIL | MR_AUTOCENTER | MR_NO_FOGGING;
+	uint render_flags = MR_AUTOCENTER | MR_NO_FOGGING;
 
 	if(sip->flags2 & SIF2_NO_LIGHTING)
 		render_flags |= MR_NO_LIGHTING;
 
-	model_render(sip->model_num, orient, &vmd_zero_vector, render_flags);
+	render_info.set_flags(render_flags);
+
+	model_render_immediate(&render_info, sip->model_num, orient, &vmd_zero_vector);
 
 	//OK we're done
 	gr_end_view_matrix();
@@ -6167,7 +6191,6 @@ ADE_FUNC(renderTechModel2, l_Shipclass, "X1, Y1, X2, Y2, [orientation Orientatio
 	//Bye!!
 	g3_end_frame();
 	gr_reset_clip();
-	gr_disable_team_color();
 
 	return ade_set_args(L, "b", true);
 }
@@ -12059,7 +12082,7 @@ ADE_FUNC(playMusic, l_Audio, "string Filename, [float volume = 1.0, bool looping
 	char *s;
 	float volume = 1.0f;
 	bool loop = true;
-	if(!ade_get_args(L, "s|fb", &s, &volume))
+	if (!ade_get_args(L, "s|fb", &s, &volume, &loop))
 		return ade_set_error(L, "i", -1);
 
 	int ah = audiostream_open(s, ASF_MENUMUSIC);
@@ -13096,6 +13119,38 @@ ADE_FUNC(getScreenHeight, l_Graphics, NULL, "Gets screen height", "number", "Hei
 	return ade_set_args(L, "i", gr_screen.max_h);
 }
 
+ADE_FUNC(getCenterWidth, l_Graphics, NULL, "Gets width of center monitor (should be used in conjuction with getCenterOffsetX)", "number", "Width of center monitor in pixels, or 0 if graphics are not initialized yet")
+{
+	if(!Gr_inited)
+		return ade_set_error(L, "i", 0);
+
+	return ade_set_args(L, "i", gr_screen.center_w);
+}
+
+ADE_FUNC(getCenterHeight, l_Graphics, NULL, "Gets height of center monitor (should be used in conjuction with getCenterOffsetY)", "number", "Height of center monitor in pixels, or 0 if graphics are not initialized yet")
+{
+	if(!Gr_inited)
+		return ade_set_error(L, "i", 0);
+
+	return ade_set_args(L, "i", gr_screen.center_h);
+}
+
+ADE_FUNC(getCenterOffsetX, l_Graphics, NULL, "Gets X offset of center monitor", "number", "X offset of center monitor in pixels")
+{
+	if(!Gr_inited)
+		return ade_set_error(L, "i", 0);
+
+	return ade_set_args(L, "i", gr_screen.center_offset_x);
+}
+
+ADE_FUNC(getCenterOffsetY, l_Graphics, NULL, "Gets Y offset of center monitor", "number", "Y offset of center monitor in pixels")
+{
+	if(!Gr_inited)
+		return ade_set_error(L, "i", 0);
+
+	return ade_set_args(L, "i", gr_screen.center_offset_y);
+}
+
 ADE_FUNC(getCurrentCamera, l_Graphics, "[boolean]", "Gets the current camera handle, if argument is <i>true</i> then it will also return the main camera when no custom camera is in use", "camera", "camera handle or invalid handle on error")
 {
 	camid current;
@@ -13497,7 +13552,11 @@ ADE_FUNC(drawModel, l_Graphics, "model, position, orientation", "Draws the given
 	//Draw the ship!!
 	model_clear_instance(model_num);
 	model_set_detail_level(0);
-	model_render(model_num, orient, v, MR_NORMAL);
+	model_render_params render_info;
+
+	render_info.set_detail_level_lock(0);
+
+	model_render_immediate(&render_info, model_num, orient, v);
 
 	//OK we're done
 	gr_end_view_matrix();
@@ -13538,7 +13597,11 @@ ADE_FUNC(drawModelOOR, l_Graphics, "model Model, vector Position, matrix Orienta
 
 	//Draw the ship!!
 	model_clear_instance(model_num);
-	model_render(model_num, orient, v, flags);
+
+	model_render_params render_info;
+	render_info.set_flags(flags);
+
+	model_render_immediate(&render_info, model_num, orient, v);
 
 	return ade_set_args(L, "i", 0);
 }
@@ -13633,7 +13696,7 @@ ADE_FUNC(drawTargetingBrackets, l_Graphics, "object Object, [boolean draw=true, 
 	y1 -= padding;
 	y2 += padding;
 	if ( draw_box ) {
-		draw_brackets_square(x1, y1, x2, y2, false);
+		draw_brackets_square(x1, y1, x2, y2, GR_RESIZE_NONE);
 	}
 
 	if ( entered_frame )
