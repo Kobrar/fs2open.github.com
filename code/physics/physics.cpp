@@ -381,10 +381,18 @@ void physics_sim(vec3d* position, matrix* orient, physics_info* pi, float sim_ti
 
 			//check if gravity apllied
 			if ((pi->gravity_scale != 0.0f) && (The_mission.fgrav != 0.0f)) {
-				float t = sim_time*sim_time*(pi->gravity_scale)/2.0f;
+				float t = sim_time*sim_time*(pi->gravity_scale) / 2.0f;
 
-				vm_vec_scale_add2(position, &The_mission.vgrav, t*(pi->gravity_scale));
+				vm_vec_scale_add2(position, &The_mission.vgrav, t);// *(pi->gravity_scale));
 				vm_vec_scale_add2(&pi->vel, &The_mission.vgrav, sim_time);
+
+				if (vm_vec_mag_quick(&pi->vel) > 0.0f){
+					orient->vec.fvec = pi->vel;
+					vm_vec_normalize(&orient->vec.fvec);
+					vm_vec_zero(&orient->vec.uvec);
+					vm_vec_zero(&orient->vec.rvec);
+					vm_orthogonalize_matrix(orient);
+				}
 
 				pi->speed = vm_vec_mag(&pi->vel);							//	Note, cannot use quick version, causes cumulative error, increasing speed.
 				//TBD: adjust orientation here. Too lazy today.

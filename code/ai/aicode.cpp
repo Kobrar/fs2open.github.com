@@ -3372,7 +3372,7 @@ int Debug_k = 0;
 float compute_collision_time(vec3d *targpos, vec3d *targvel, vec3d *attackpos, float weapon_speed, float fac)
 {
 
-	if(fac*fac<0.0001f || The_mission.fgrav < 0.01){
+	if(fac*fac*The_mission.fgrav < 0.01){
 		vec3d	vec_to_target;
 		float		pos_dot_vel;
 		float		vel_sqr;
@@ -3401,26 +3401,107 @@ float compute_collision_time(vec3d *targpos, vec3d *targvel, vec3d *attackpos, f
 			}
 		}
 	}else{
+		double a,b,c,d,e,t1,t2,t3,t4;
 		float tt;
 		vec3d P;
-		float	dist;
+		//float dist;
+		t1 = -1.0;
+		t2 = -1.0;
+		t3 = -1.0;
+		t4 = -1.0;
+		tt = -1.0;
 
+		/** Kobrar
+		 * And here's the deal;
+		 * if R is vector from firing position to target
+		 * v is scalar constant speed of the weapon
+		 * W is vector velocity of the target
+		 * G is the gravity vector
+		 * f is the gravity factor = weapon gfac - target gfac
+		 * then we can get time of collision as root of quartic equation:
+		 * [just compute for every coordinate and add up]
+		 * a = G*G*f*f/4 => G1*G1*f*f/4 + G2*G2*f*f/4 + G3*G3*f*f/4
+		 * b = -GWf
+		 * c = W*W - RGf - v*v
+		 * d = 2RW
+		 * e = R*R
+		 * You can always ask for whole solution or check
+		 * http://playtechs.blogspot.com/2007/04/aiming-at-moving-target.html
+		 */
+
+		vec3d R;
+		vm_vec_sub(&R, targpos, attackpos);
+		float v = weapon_speed;
+		vec3d *W = targvel;
+		vec3d *G = &The_mission.vgrav;
+		float f = fac;
+
+		// If target is stationary,  it gives us just quadratic
+		if (vm_vec_mag(W) > 0.01f){
+			// a
+			a = f * f * vm_vec_dot(G, G) / 4.0;
+			// b
+			b = -f * vm_vec_dot(G, W);
+			// c
+			c = vm_vec_dot(W, W) - f * vm_vec_dot(&R, G) - v * v;
+			// d
+			d = 2.0 * vm_vec_dot(&R, W);
+			// e
+			e = vm_vec_dot(&R, &R);
+
+			if (solveQuartic(a, b, c, d, e, t1, t2, t3, t4)){
+				if (t1 > 0.0){
+					if (tt < 0.0 || t1 < tt)
+						tt = (float)t1;
+				}
+				if (t2 > 0.0){
+					if (tt < 0.0 || t2 < tt)
+						tt = (float)t2;
+				}
+				if (t3 > 0.0){
+					if (tt < 0.0 || t3 < tt)
+						tt = (float)t3;
+				}
+				if (t4 > 0.0){
+					if (tt < 0.0 || t4 < tt)
+						tt = (float)t4;
+				}
+			}
+		} else {
+			a = f * f * vm_vec_dot(G, G) / 4.0;
+			b = -f * vm_vec_dot(&R, G) - v * v;
+			c = vm_vec_dot(&R, &R);
+			if (solveQuadratic(a, b, c, t1, t2)){
+				if (t1 > 0.0){
+					t1 = sqrt(t1);
+					if (tt < 0.0 || t1 < tt)
+						tt = (float)t1;
+				}
+				if (t2 > 0.0){
+					t2 = sqrt(t2);
+					if (tt < 0.0 || t2 < tt)
+						tt = (float)t2;
+				}
+			}
+
+		}
+		/* old formula, not so closed is it, but so simple!
 		dist = vm_vec_dist_quick(attackpos, targpos);
 		tt = dist/weapon_speed;
 
-		for(int i = 0;i<20;++i){
-			vm_vec_scale_add(&P, targpos, targvel, tt);
-			vm_vec_scale_add2(&P, &The_mission.vgrav, -fac*0.5f*tt*tt);
-			dist = vm_vec_dist(attackpos, &P);
-			tt = dist/weapon_speed;
-		}
+		for(int i = 0; i < 20; ++i){
+		vm_vec_scale_add(&P, targpos, targvel, tt);
+		vm_vec_scale_add2(&P, &The_mission.vgrav, -fac*0.5f*tt*tt);
+		dist = vm_vec_dist(attackpos, &P);
+		tt = dist/weapon_speed;
+		}*/
 
-		if(tt<0.0f)
-			tt=0.0f;
+		if(tt < 0.0f)
+			tt = 0.0f;
 		return tt;
 	}
 
-	return 0.0f;
+	return 0.0;
 }
 
 
@@ -6436,17 +6517,19 @@ void set_predicted_enemy_pos_turret(vec3d *predicted_enemy_pos, vec3d *gun_pos, 
 }
 
 //	Compute the predicted position of a ship to be fired upon.
+//  Or specific subsystem, as in aip
 //	This is based on current position of firing object, enemy object, relative position of gun on firing object,
 //	weapon speed and skill level constraints.
 //	Return value in *predicted_enemy_pos.
 //	Also, stuff globals G_predicted_pos, G_collision_time and G_fire_pos.
 //SUSHI: Modified to take in a position and accel value instead of reading it directly from the enemy object
+//KOBRAR: Modified to aim at subsystem if specified.
 void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, object *eobjp, ai_info *aip)
 {
 	float	weapon_speed, range_time;
 	ship	*shipp = &Ships[pobjp->instance];
 	weapon_info *wip;
-	vec3d	target_moving_direction;
+	vec3d	target_moving_direction, targ_subsys;
 	vec3d *enemy_pos = &eobjp->pos;
 	vec3d *enemy_vel = &eobjp->phys_info.vel;
 	float fac1;
@@ -6455,6 +6538,11 @@ void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, object *
 
 	Assert( enemy_pos != NULL );
 	Assert( enemy_vel != NULL );
+
+	if (aip->targeted_subsys != NULL) {
+		get_subsystem_pos(&targ_subsys, En_objp, aip->targeted_subsys);
+		enemy_pos = &targ_subsys;
+	}
 
 	wip = ai_get_weapon(&shipp->weapons);
 	fac1 = wip->gravity_scale;
@@ -6496,11 +6584,8 @@ void set_predicted_enemy_pos(vec3d *predicted_enemy_pos, object *pobjp, object *
 			if (collision_time == 0.0f){
 				collision_time = 100.0f;
 			}
-			ved3d temp_predicted_pos;
-			vm_vec_scale_add(temp_predicted_pos, enemy_pos, &target_moving_direction, collision_time);
-			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* collision_time * collision_time / 2.0f);
-
-
+			vec3d temp_predicted_pos;
+			vm_vec_scale_add(&temp_predicted_pos, enemy_pos, &target_moving_direction, collision_time);
 			vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac* collision_time * collision_time / 2.0f);
 
 		}
@@ -8336,11 +8421,12 @@ void ai_chase()
 	if (((real_dot_to_enemy < 0.25f) && (The_mission.fgrav < 0.01f)) || (aip->target_time < 1.0f)) {
 		predicted_enemy_pos = enemy_pos;
 	} else if (aip->ai_flags & AIF_SEEK_LOCK) {
-		set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, &aip->last_aim_enemy_pos, &aip->last_aim_enemy_vel, aip);	// Set G_fire_pos
+		set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);	// Set G_fire_pos
 		predicted_enemy_pos = enemy_pos;
 		G_predicted_pos = predicted_enemy_pos;
 	} else {
-		//	Set predicted_enemy_pos.
+		set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
+		/*//	Set predicted_enemy_pos.
 		//	See if attacking a subsystem.
 		if (aip->targeted_subsys != NULL) {
 			Assert(En_objp->type == OBJ_SHIP);
@@ -8351,11 +8437,7 @@ void ai_chase()
 						predicted_enemy_pos = enemy_pos;
 						predicted_vec_to_enemy = real_vec_to_enemy;
 					} else {
-						get_subsystem_pos(&enemy_pos, En_objp, aip->targeted_subsys);
-						vec3d temp;
-						vm_vec_sub(&temp, &enemy_pos, &En_objp->pos);
 						set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
-						vm_vec_add(&predicted_enemy_pos, &predicted_enemy_pos, &temp);
 					}
 				} else {
 					set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
@@ -8367,7 +8449,7 @@ void ai_chase()
 			}
 		} else {
 			set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
-		}
+		}*/
 	}
 
 	vm_vec_sub(&predicted_vec_to_enemy, &predicted_enemy_pos, &player_pos);

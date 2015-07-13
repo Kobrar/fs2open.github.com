@@ -866,16 +866,17 @@ void ai_big_chase()
 	ai_big_pick_attack_point(En_objp, Pl_objp, &enemy_pos, 0.8f);
 
 	//	Compute the predicted position of the center of the ship, then add the delta to the goal pos.
-	if (En_objp->phys_info.speed > 3.0f) {
+	if (En_objp->phys_info.speed > 3.0f || The_mission.fgrav > 0.01f) {
 		set_predicted_enemy_pos(&predicted_enemy_pos, Pl_objp, En_objp, aip);
 		vm_vec_add2(&enemy_pos, &predicted_enemy_pos);
 		vm_vec_sub2(&enemy_pos, &En_objp->pos);
 	}	else
 		predicted_enemy_pos = En_objp->pos;
 
+	/* Done by set_predicted_enemy_pos now
 	if (aip->targeted_subsys != NULL) {
 		get_subsystem_pos(&enemy_pos, En_objp, aip->targeted_subsys);
-	}
+	}*/
 
 	dist_to_enemy = vm_vec_normalized_dir(&vec_to_enemy, &enemy_pos, &player_pos); // - En_objp->radius;
 	dot_to_enemy = vm_vec_dot(&vec_to_enemy, &Pl_objp->orient.vec.fvec);

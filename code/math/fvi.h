@@ -134,6 +134,6 @@ int project_point_onto_bbox(const vec3d *mins, const vec3d *maxs, const vec3d *s
 
 
 #endif
-bool solveQuadratic(double &a, double &b, double &c, double &root);
+bool solveQuadratic(double &a, double &b, double &c, double &root, double &root2);
 bool solveCubic(double &a, double &b, double &c, double &d, double &root);
 bool solveQuartic(double &a, double &b, double &c, double &d, double &e, double &root1, double &root2, double &root3, double &root4);

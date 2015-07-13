@@ -1135,12 +1135,12 @@ int project_point_onto_bbox(const vec3d *mins, const vec3d *maxs, const vec3d *s
 	return inside;
 }
 
-//2nd,3rd and 4th degree solutions. I thought it was the best place for them
+//2nd, 3rd and 4th degree solutions. I thought it was the best place for them
 //found on the web
 
 
 //----------------------------------------------------------------------------
-bool solveQuadratic(double &a, double &b, double &c, double &root)
+bool solveQuadratic(double &a, double &b, double &c, double &root1, double &root2)
 {
 	if(a == 0.0 || abs(a/b) < 1.0e-6)
 	{
@@ -1148,7 +1148,7 @@ bool solveQuadratic(double &a, double &b, double &c, double &root)
 			return false;
 		else
 		{
-			root = -c/b;
+			root1 = -c/b;
 			return true;
 		}
 	}
@@ -1157,7 +1157,8 @@ bool solveQuadratic(double &a, double &b, double &c, double &root)
 	if(discriminant >= 0.0)
 	{
 		discriminant = sqrt(discriminant);
-		root = (b + discriminant) * -0.5 / a;
+		root1 = (b + discriminant) * -0.5 / a;
+		root2 = (b - discriminant) * -0.5 / a;
 		return true;
 	}
 
@@ -1166,8 +1167,9 @@ bool solveQuadratic(double &a, double &b, double &c, double &root)
 //----------------------------------------------------------------------------
 bool solveCubic(double &a, double &b, double &c, double &d, double &root)
 {
+	double root2;
 	if(a == 0.0 || abs(a/b) < 1.0e-6)
-		return solveQuadratic(b, c, d, root);
+		return solveQuadratic(b, c, d, root, root2);
 
 	double B = b/a, C = c/a, D = d/a;
 

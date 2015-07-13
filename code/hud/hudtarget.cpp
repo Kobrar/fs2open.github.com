@@ -3715,7 +3715,8 @@ void hud_calculate_lead_pos(vec3d *lead_target_pos, vec3d *target_pos, object *t
 		vec3d dist;
 		vm_vec_sub(&dist,source_pos, target_pos);
 		float dist_to_target =  vm_vec_mag(&dist);
-		polish_predicted_target_pos(wip, targetp, target_pos, lead_target_pos, dist_to_target, &last_delta_vector, 1); // Not used:, float time_to_enemy)
+		// Kobrar: just what is it for anyway?
+		polish_predicted_target_pos(wip, targetp, target_pos, lead_target_pos, dist_to_target, &last_delta_vector, 1, fac, time_to_target); // Not used:, float time_to_enemy)
 
 		if(rel_pos) { // needed for quick lead indicators, not needed for normal lead indicators.
 			vm_vec_add2(lead_target_pos, rel_pos);
@@ -3784,7 +3785,7 @@ int hud_get_best_primary_bank(float *range)
 // 
 // Called by the draw lead indicator code to predict where the enemy is going to be
 //
-void polish_predicted_target_pos(weapon_info *wip, object *targetp, vec3d *enemy_pos, vec3d *predicted_enemy_pos, float dist_to_enemy, vec3d *last_delta_vec, int num_polish_steps) 
+void polish_predicted_target_pos(weapon_info *wip, object *targetp, vec3d *enemy_pos, vec3d *predicted_enemy_pos, float dist_to_enemy, vec3d *last_delta_vec, int num_polish_steps, float fac, float time_to_target) 
 {
 	int	iteration;
 	vec3d	player_pos = Player_obj->pos;	
@@ -3806,6 +3807,7 @@ void polish_predicted_target_pos(weapon_info *wip, object *targetp, vec3d *enemy
 		dist_to_enemy = vm_vec_dist_quick(predicted_enemy_pos, &player_pos);
 		time_to_enemy = dist_to_enemy/weapon_speed;
 		vm_vec_scale_add(predicted_enemy_pos, enemy_pos, &enemy_vel, time_to_enemy);
+		vm_vec_scale_add2(predicted_enemy_pos, &The_mission.vgrav, -fac*0.5f*time_to_enemy*time_to_enemy);
 		vm_vec_sub(last_delta_vec, predicted_enemy_pos, &last_predicted_enemy_pos);
 		last_predicted_enemy_pos= *predicted_enemy_pos;
 	}
