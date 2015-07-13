@@ -3688,7 +3688,28 @@ void hud_calculate_lead_pos(vec3d *lead_target_pos, vec3d *target_pos, object *t
 	vec3d last_delta_vector;
 	float time_to_target, target_moved_dist;
 	float fac = wip->gravity_scale - targetp->phys_info.gravity_scale;
-	if(wip->max_speed != 0) {
+
+	target_moving_direction = targetp->phys_info.vel;
+
+	if (The_mission.ai_profile->flags & AIPF_USE_ADDITIVE_WEAPON_VELOCITY)
+		vm_vec_scale_sub2(&target_moving_direction, &Player_obj->phys_info.vel, wip->vel_inherit_amount);
+
+	if (wip->max_speed != 0) {
+		time_to_target = compute_collision_time(target_pos, &targetp->phys_info.vel, source_pos, wip->max_speed, fac);
+	}
+	else {
+		time_to_target = 0;
+	}
+
+	vm_vec_zero(lead_target_pos);
+	vm_vec_scale(&target_moving_direction, time_to_target);
+	vm_vec_add(lead_target_pos, target_pos, &target_moving_direction);
+	vm_vec_scale_add2(lead_target_pos, &The_mission.vgrav, -fac*time_to_target*time_to_target / 2.0f);
+
+	if (rel_pos) { // needed for quick lead indicators, not needed for normal lead indicators.
+		vm_vec_add2(lead_target_pos, rel_pos);
+	}
+	/*if(wip->max_speed != 0) {
 		time_to_target = compute_collision_time(target_pos, &targetp->phys_info.vel, source_pos, wip->max_speed, fac);
 	} else {
 		time_to_target = 0;
@@ -3721,7 +3742,7 @@ void hud_calculate_lead_pos(vec3d *lead_target_pos, vec3d *target_pos, object *t
 		if(rel_pos) { // needed for quick lead indicators, not needed for normal lead indicators.
 			vm_vec_add2(lead_target_pos, rel_pos);
 		}
-	}
+	}*/
 }
 
 // Return the bank number for the primary weapon that can fire the farthest, from
