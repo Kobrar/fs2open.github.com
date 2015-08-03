@@ -119,10 +119,10 @@ public:
 //
 
 static int Num_interp_verts_allocated = 0;
-vec3d **Interp_verts = NULL;
+vec3 **Interp_verts = NULL;
 static vertex *Interp_points = NULL;
 static vertex *Interp_splode_points = NULL;
-vec3d *Interp_splode_verts = NULL;
+vec3 *Interp_splode_verts = NULL;
 static int Interp_num_verts = 0;
 
 static vertex **Interp_list = NULL;
@@ -144,7 +144,7 @@ int Interp_saved_lighting_full = 0;
 
 
 static int Num_interp_norms_allocated = 0;
-static vec3d **Interp_norms = NULL;
+static vec3 **Interp_norms = NULL;
 static ubyte *Interp_light_applied = NULL;
 static int Interp_num_norms = 0;
 static ubyte *Interp_lights;
@@ -291,11 +291,11 @@ void model_allocate_interp_data(int n_verts = 0, int n_norms = 0, int n_list_ver
 			Interp_verts = NULL;
 		}
 		// Interp_verts can't be reliably realloc'd so free and malloc it on each resize (no data needs to be carried over)
-		Interp_verts = (vec3d**) vm_malloc( n_verts * sizeof(vec3d *) );
+		Interp_verts = (vec3**) vm_malloc( n_verts * sizeof(vec3 *) );
 
 		Interp_points = (vertex*) vm_realloc( Interp_points, n_verts * sizeof(vertex) );
 		Interp_splode_points = (vertex*) vm_realloc( Interp_splode_points, n_verts * sizeof(vertex) );
-		Interp_splode_verts = (vec3d*) vm_realloc( Interp_splode_verts, n_verts * sizeof(vec3d) );
+		Interp_splode_verts = (vec3*) vm_realloc( Interp_splode_verts, n_verts * sizeof(vec3) );
 
 		Num_interp_verts_allocated = n_verts;
 
@@ -309,7 +309,7 @@ void model_allocate_interp_data(int n_verts = 0, int n_norms = 0, int n_list_ver
 			Interp_norms = NULL;
 		}
 		// Interp_norms can't be reliably realloc'd so free and malloc it on each resize (no data needs to be carried over)
-		Interp_norms = (vec3d**) vm_malloc( n_norms * sizeof(vec3d *) );
+		Interp_norms = (vec3**) vm_malloc( n_norms * sizeof(vec3 *) );
 
 		// these next two lighting things aren't values that need to be carried over, but we need to make sure they are 0 by default
 		if (Interp_light_applied != NULL) {
@@ -497,7 +497,7 @@ void model_interp_splode_defpoints(ubyte * p, polymodel *pm, bsp_info *sm, float
 
 	ubyte * normcount = p+20;
 	vertex *dest = Interp_splode_points;
-	vec3d *src = vp(p+offset);
+	vec3 *src = (vec3*)(p+offset);
 
 	for (n = 0; n < nverts; n++) {
 		nnorms += normcount[n];
@@ -508,18 +508,31 @@ void model_interp_splode_defpoints(ubyte * p, polymodel *pm, bsp_info *sm, float
 	vec3d dir;
 
 	for (n=0; n<nverts; n++ )	{	
-		Interp_splode_verts[n] = *src;		
+		Interp_splode_verts[n].xyz.x = src->xyz.x;
+		Interp_splode_verts[n].xyz.y = src->xyz.y;
+		Interp_splode_verts[n].xyz.z = src->xyz.z;
 			
 		src++;
 
-		vm_vec_avg_n(&dir, normcount[n], src);
+		// Too lazy to write another avg n
+		dir.xyz.x = 0.0f;
+		dir.xyz.y = 0.0f;
+		dir.xyz.z = 0.0f;
+		for (int i = 0; i < normcount[n]; i++){
+			dir.xyz.x += (src)->xyz.x;
+			dir.xyz.y += (src)->xyz.y;
+			dir.xyz.z += (src)->xyz.z;
+			src++;
+		}
+		vm_vec_scale(&dir, 1.0f / normcount[n]);
 		vm_vec_normalize(&dir);
 
-		for(int i=0; i<normcount[n]; i++)src++;
+		vec3d tmp;
+		tmp = vm_vec3_to_vec3d(&Interp_splode_verts[n]);
+		vm_vec_scale_add2(&tmp, &dir, dist);
+		Interp_splode_verts[n] = vm_vec3d_to_vec3(&tmp);
 
-		vm_vec_scale_add2(&Interp_splode_verts[n], &dir, dist);
-
-		g3_rotate_vertex(dest, &Interp_splode_verts[n]);
+		g3_rotate_vertex(dest, &vm_vec3_to_vec3d(&Interp_splode_verts[n]));
 		
 		dest++;
 
@@ -547,7 +560,7 @@ void model_interp_defpoints(ubyte * p, polymodel *pm, bsp_info *sm)
 
 	ubyte * normcount = p+20;
 	vertex *dest = NULL;
-	vec3d *src = vp(p+offset);
+	vec3 *src = (vec3*)(p+offset);
 
 	// Get pointer to lights
 	Interp_lights = p+20+nverts;
@@ -592,7 +605,9 @@ void model_interp_defpoints(ubyte * p, polymodel *pm, bsp_info *sm)
 				tmp.xyz.y = src->xyz.y * 1.0f;
 				tmp.xyz.z = src->xyz.z * Interp_thrust_scale;
 			} else {
-				tmp = *src;
+				tmp.xyz.x = src->xyz.x;
+				tmp.xyz.y = src->xyz.y;
+				tmp.xyz.z = src->xyz.z;
 			}
 			
 			g3_rotate_vertex(dest,&tmp);
@@ -648,13 +663,13 @@ void model_interp_defpoints(ubyte * p, polymodel *pm, bsp_info *sm)
 					g3_rotate_vertex(dest, &point);
 				}else{
 					Interp_verts[n] = src;	
-					g3_rotate_vertex(dest, src);
+					g3_rotate_vertex(dest, &vm_vec3_to_vec3d(src));
 				}
 			}
 			else {
 				Interp_verts[n] = src; 	 	 
 
-				g3_rotate_vertex(dest, src);
+				g3_rotate_vertex(dest, &vm_vec3_to_vec3d(src));
 			}
 
 			src++;		// move to normal
@@ -730,11 +745,11 @@ void model_interp_flatpoly(ubyte * p,polymodel * pm)
 			int norm = verts[i*2+1];
 	
 			if ( Interp_flags & MR_NO_SMOOTHING )	{
-				light_apply_rgb( &Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, Interp_verts[vertnum], vp(p+8), Interp_light );
+				light_apply_rgb( &Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, &vm_vec3_to_vec3d(Interp_verts[vertnum]), vp(p+8), Interp_light );
 			} else {
 				// if we're not using saved lighting
 				if ( !Interp_use_saved_lighting && !Interp_light_applied[norm] )	{
-					light_apply_rgb( &Interp_lighting->lights[norm].r, &Interp_lighting->lights[norm].g, &Interp_lighting->lights[norm].b, Interp_verts[vertnum], vp(p+8), Interp_light );
+					light_apply_rgb(&Interp_lighting->lights[norm].r, &Interp_lighting->lights[norm].g, &Interp_lighting->lights[norm].b, &vm_vec3_to_vec3d(Interp_verts[vertnum]), vp(p + 8), Interp_light);
 					Interp_light_applied[norm] = 1;
 				}
 
@@ -870,7 +885,7 @@ void model_interp_tmappoly(ubyte * p,polymodel * pm)
 				Interp_list[i]->r = (unsigned char)(255*salpha);
 				Interp_list[i]->g = (unsigned char)(250*salpha);
 				Interp_list[i]->b = (unsigned char)(200*salpha);
-				model_interp_edge_alpha(&Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, Interp_verts[verts[i].vertnum], Interp_norms[verts[i].normnum], salpha, false);
+				model_interp_edge_alpha(&Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, &vm_vec3_to_vec3d(Interp_verts[verts[i].vertnum]), &vm_vec3_to_vec3d(Interp_norms[verts[i].normnum]), salpha, false);
 			}
 			cull = gr_set_cull(0);
 			gr_set_bitmap( splodeingtexture, GR_ALPHABLEND_FILTER, GR_BITBLT_MODE_NORMAL, salpha );
@@ -903,11 +918,11 @@ void model_interp_tmappoly(ubyte * p,polymodel * pm)
 				Interp_list[i]->spec_b = 0;
 				
 				if (Interp_flags & MR_EDGE_ALPHA) {
-					model_interp_edge_alpha(&Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, Interp_verts[verts[i].vertnum], Interp_norms[verts[i].normnum], Interp_warp_alpha, false);
+					model_interp_edge_alpha(&Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, &vm_vec3_to_vec3d(Interp_verts[verts[i].vertnum]), &vm_vec3_to_vec3d(Interp_norms[verts[i].normnum]), Interp_warp_alpha, false);
 				}
 
 				if (Interp_flags & MR_CENTER_ALPHA) {
-					model_interp_edge_alpha(&Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, Interp_verts[verts[i].vertnum], Interp_norms[verts[i].normnum], Interp_warp_alpha, true);
+					model_interp_edge_alpha(&Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, &vm_vec3_to_vec3d(Interp_verts[verts[i].vertnum]), &vm_vec3_to_vec3d(Interp_norms[verts[i].normnum]), Interp_warp_alpha, true);
 				}
 
 				SPECMAP = -1;
@@ -920,16 +935,16 @@ void model_interp_tmappoly(ubyte * p,polymodel * pm)
 				int norm = verts[i].normnum;
 		
 				if ( Interp_flags & MR_NO_SMOOTHING )	{
-					light_apply_rgb( &Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, Interp_verts[vertnum], vp(p+8), Interp_light );
+					light_apply_rgb(&Interp_list[i]->r, &Interp_list[i]->g, &Interp_list[i]->b, &vm_vec3_to_vec3d(Interp_verts[vertnum]), &vm_vec3_to_vec3d((vec3*)(p + 8)), Interp_light);
 					if((Detail.lighting > 2) && (Interp_detail_level < 2) && Cmdline_spec )
-						light_apply_specular( &Interp_list[i]->spec_r, &Interp_list[i]->spec_g, &Interp_list[i]->spec_b, Interp_verts[vertnum], vp(p+8),  &View_position);
+						light_apply_specular(&Interp_list[i]->spec_r, &Interp_list[i]->spec_g, &Interp_list[i]->spec_b, &vm_vec3_to_vec3d(Interp_verts[vertnum]), &vm_vec3_to_vec3d((vec3*)(p + 8)), &View_position);
 				} else {					
 					// if we're applying lighting as normal, and not using saved lighting
 					if ( !Interp_use_saved_lighting && !Interp_light_applied[norm] )	{
 
-						light_apply_rgb( &Interp_lighting->lights[norm].r, &Interp_lighting->lights[norm].g, &Interp_lighting->lights[norm].b, Interp_verts[vertnum], Interp_norms[norm], Interp_light );
+						light_apply_rgb(&Interp_lighting->lights[norm].r, &Interp_lighting->lights[norm].g, &Interp_lighting->lights[norm].b, &vm_vec3_to_vec3d(Interp_verts[vertnum]), &vm_vec3_to_vec3d(Interp_norms[norm]), Interp_light);
 						if((Detail.lighting > 2) && (Interp_detail_level < 2) && Cmdline_spec )
-							light_apply_specular( &Interp_lighting->lights[norm].spec_r, &Interp_lighting->lights[norm].spec_g, &Interp_lighting->lights[norm].spec_b, Interp_verts[vertnum], Interp_norms[norm],  &View_position);
+							light_apply_specular(&Interp_lighting->lights[norm].spec_r, &Interp_lighting->lights[norm].spec_g, &Interp_lighting->lights[norm].spec_b, &vm_vec3_to_vec3d(Interp_verts[vertnum]), &vm_vec3_to_vec3d(Interp_norms[norm]), &View_position);
 
 						Interp_light_applied[norm] = 1;
 					}
@@ -3544,7 +3559,7 @@ static int submodel_get_points_internal(int model_num, int submodel_num)
 				int nnorms = 0;			
 
 				ubyte * normcount = p+20;
-				vec3d *src = vp(p+offset);
+				vec3 *src = (vec3*)(p+offset);
 
 				for (n = 0; n < nverts; n++) {
 					nnorms += normcount[n];
@@ -3553,12 +3568,12 @@ static int submodel_get_points_internal(int model_num, int submodel_num)
 				model_allocate_interp_data(nverts, nnorms);
 
 				// this must happen only after the interp_data allocation call (since the address changes)
-				vec3d **verts = Interp_verts;
-				vec3d **norms = Interp_norms;
+				vec3 **verts = Interp_verts;
+				vec3 **norms = Interp_norms;
 
 				for (n=0; n<nverts; n++ )	{
 					*verts++ = src;
-					*norms++ = src + 1;		// first normal associated with the point
+					*norms++ = (src + 1);		// first normal associated with the point
 
 					src += normcount[n]+1;
 				} 
@@ -3608,14 +3623,14 @@ void submodel_get_two_random_points(int model_num, int submodel_num, vec3d *v1, 
 	int vn1 = (myrand()>>5) % nv;
 	int vn2 = (myrand()>>5) % nv;
 
-	*v1 = *Interp_verts[vn1];
-	*v2 = *Interp_verts[vn2];
+	*v1 = vm_vec3_to_vec3d(Interp_verts[vn1]);
+	*v2 = vm_vec3_to_vec3d(Interp_verts[vn2]);
 
 	if(n1 != NULL){
-		*n1 = *Interp_norms[vn1];
+		*n1 = vm_vec3_to_vec3d(Interp_norms[vn1]);
 	}
 	if(n2 != NULL){
-		*n2 = *Interp_norms[vn2];
+		*n2 = vm_vec3_to_vec3d(Interp_norms[vn2]);
 	}
 }
 
@@ -4027,7 +4042,7 @@ void parse_defpoint(int off, ubyte *bsp_data)
 	int next_norm = 0;
 
 	ubyte *normcount = off+bsp_data+20;
-	vec3d *src = vp(off+bsp_data+offset);
+	vec3 *src = (vec3*)(off+bsp_data+offset);
 
 	// Get pointer to lights
 	Interp_lights = off+bsp_data+20+nverts;
@@ -4076,14 +4091,14 @@ void parse_tmap(int offset, ubyte *bsp_data)
 	tverts = (model_tmap_vert *)&bsp_data[offset+44];
 
 	vertex *V;
-	vec3d *v;
-	vec3d *N;
+	vec3 *v;
+	vec3 *N;
 
 	int problem_count = 0;
 
 	for (int i = 1; i < (n_vert-1); i++) {
 		V = &polygon_list[pof_tex].vert[(polygon_list[pof_tex].n_verts)];
-		N = &polygon_list[pof_tex].norm[(polygon_list[pof_tex].n_verts)];
+		N = &vm_vec3d_to_vec3(&polygon_list[pof_tex].norm[(polygon_list[pof_tex].n_verts)]);
 		v = Interp_verts[(int)tverts[0].vertnum];
 		V->world.xyz.x = v->xyz.x;
 		V->world.xyz.y = v->xyz.y;
@@ -4094,13 +4109,13 @@ void parse_tmap(int offset, ubyte *bsp_data)
 		*N = *Interp_norms[(int)tverts[0].normnum];
 
 		if ( IS_VEC_NULL(N) )
-			*N = *vp(p);
+			*N = *(vec3*)(p);
 
-	  	problem_count += check_values(N);
-		vm_vec_normalize_safe(N);
+	  	problem_count += check_values(&vm_vec3_to_vec3d(N));
+//		vm_vec_normalize_safe(N);
 
 		V = &polygon_list[pof_tex].vert[(polygon_list[pof_tex].n_verts)+1];
-		N = &polygon_list[pof_tex].norm[(polygon_list[pof_tex].n_verts)+1];
+		N = &vm_vec3d_to_vec3(&polygon_list[pof_tex].norm[(polygon_list[pof_tex].n_verts) + 1]);
 		v = Interp_verts[(int)tverts[i].vertnum];
 		V->world.xyz.x = v->xyz.x;
 		V->world.xyz.y = v->xyz.y;
@@ -4111,27 +4126,27 @@ void parse_tmap(int offset, ubyte *bsp_data)
 		*N = *Interp_norms[(int)tverts[i].normnum];
 
 		if ( IS_VEC_NULL(N) )
-			*N = *vp(p);
+			*N = *(vec3*)(p);
 
-	 	problem_count += check_values(N);
-		vm_vec_normalize_safe(N);
+	 	problem_count += check_values(&vm_vec3_to_vec3d(N));
+//		vm_vec_normalize_safe(N);
 
 		V = &polygon_list[pof_tex].vert[(polygon_list[pof_tex].n_verts)+2];
-		N = &polygon_list[pof_tex].norm[(polygon_list[pof_tex].n_verts)+2];
-		v = Interp_verts[(int)tverts[i+1].vertnum];
+		N = &vm_vec3d_to_vec3(&polygon_list[pof_tex].norm[(polygon_list[pof_tex].n_verts) + 2]);
+		v = Interp_verts[(int)tverts[i + 1].vertnum];
 		V->world.xyz.x = v->xyz.x;
 		V->world.xyz.y = v->xyz.y;
 		V->world.xyz.z = v->xyz.z;
 		V->texture_position.u = tverts[i+1].u;
 		V->texture_position.v = tverts[i+1].v;
 
-		*N = *Interp_norms[(int)tverts[i+1].normnum];
+		*N = *Interp_norms[(int)tverts[i + 1].normnum];
 
 		if ( IS_VEC_NULL(N) )
-			*N = *vp(p);
+			*N = *(vec3*)(p);
 
-		problem_count += check_values(N);
-		vm_vec_normalize_safe(N);
+		problem_count += check_values(&vm_vec3_to_vec3d(N));
+//		vm_vec_normalize_safe(N);
 
 		polygon_list[pof_tex].n_verts += 3;
 	}
@@ -5444,7 +5459,7 @@ void bsp_polygon_data::process_defpoints(int off, ubyte* bsp_data)
 	int offset = w(off + bsp_data + 16);
 
 	ubyte *normcount = off + bsp_data + 20;
-	vec3d *src = vp(off + bsp_data + offset);
+	vec3 *src =(vec3*)(off + bsp_data + offset);
 
 	// Get pointer to lights
 	Lights = off + bsp_data + 20 + nverts;
@@ -5457,11 +5472,11 @@ void bsp_polygon_data::process_defpoints(int off, ubyte* bsp_data)
 	Normal_list.clear();
 
 	for (n = 0; n < nverts; n++) {
-		Vertex_list.push_back(*src);
+		Vertex_list.push_back(*(vec3d*)src);
 		src++; // move to normal
 
 		for (i = 0; i < normcount[n]; i++) {
-			Normal_list.push_back(*src);
+			Normal_list.push_back(*(vec3d*)src);
 			src++;
 		}
 	}

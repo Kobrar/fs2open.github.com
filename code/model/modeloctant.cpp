@@ -102,7 +102,7 @@ void moff_defpoints(ubyte * p, int just_count)
 		return;
 
 	ubyte * normcount = p+20;
-	vec3d *src = vp(p+offset);
+	vec3 *src = (vec3*)(p+offset);
 
 	// make sure we have enough space allocated for the new data
 	for (n = 0; n < nverts; n++) {
@@ -149,7 +149,7 @@ void moff_tmappoly(ubyte * p, polymodel * pm, model_octant * oct, int just_count
 		Assert( Interp_verts != NULL );
 
 		for (i=0;i<nv;i++)	{
-			vm_vec_add2( &center_point, Interp_verts[verts[i].vertnum] );
+			vm_vec_add2(&center_point, &vm_vec3_to_vec3d(Interp_verts[verts[i].vertnum]));
 		}
 
 		center_point.xyz.x /= nv;
@@ -161,7 +161,7 @@ void moff_tmappoly(ubyte * p, polymodel * pm, model_octant * oct, int just_count
 		float rad = 0.0f;
 
 		for (i=0;i<nv;i++)	{
-			float dist = vm_vec_dist( &center_point, Interp_verts[verts[i].vertnum] );
+			float dist = vm_vec_dist(&center_point, &vm_vec3_to_vec3d(Interp_verts[verts[i].vertnum]));
 			if ( dist > rad )	{
 				rad = dist;
 			}
@@ -210,7 +210,7 @@ void moff_flatpoly(ubyte * p, polymodel * pm, model_octant * oct, int just_count
 		Assert( Interp_verts != NULL );
 
 		for (i=0;i<nv;i++)	{
-			vm_vec_add2( &center_point, Interp_verts[verts[i*2]] );
+			vm_vec_add2(&center_point, &vm_vec3_to_vec3d(Interp_verts[verts[i * 2]]));
 		}
 
 		center_point.xyz.x /= nv;
@@ -222,7 +222,7 @@ void moff_flatpoly(ubyte * p, polymodel * pm, model_octant * oct, int just_count
 		float rad = 0.0f;
 
 		for (i=0;i<nv;i++)	{
-			float dist = vm_vec_dist( &center_point, Interp_verts[verts[i*2]] );
+			float dist = vm_vec_dist(&center_point, &vm_vec3_to_vec3d(Interp_verts[verts[i * 2]]));
 			if ( dist > rad )	{
 				rad = dist;
 			}

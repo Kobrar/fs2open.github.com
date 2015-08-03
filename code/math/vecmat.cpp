@@ -31,6 +31,25 @@ matrix vmd_identity_matrix = IDENTITY_MATRIX;
 
 #define	UNINITIALIZED_VALUE	-12345678.9f
 
+vec3 vm_vec3d_to_vec3(vec3d* src)
+{
+	vec3 out;
+	out.xyz.x = src->xyz.x;
+	out.xyz.y = src->xyz.y;
+	out.xyz.z = src->xyz.z;
+	return out;
+}
+
+vec3d vm_vec3_to_vec3d(vec3* src)
+{
+	vec3d out;
+	out.xyz.x = src->xyz.x;
+	out.xyz.y = src->xyz.y;
+	out.xyz.z = src->xyz.z;
+	out.xyz.w = 0.0f;
+	return out;
+}
+
 bool vm_vec_equal(const vec4 &self, const vec4 &other)
 {
 	return fl_equal(self.a1d[0], other.a1d[0]) && fl_equal(self.a1d[1], other.a1d[1]) && fl_equal(self.a1d[2], other.a1d[2]) && fl_equal(self.a1d[3], other.a1d[3]);

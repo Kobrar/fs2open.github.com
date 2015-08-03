@@ -5101,7 +5101,7 @@ void swap_bsp_defpoints(ubyte * p)
 	w(p+12) = n_norms;
 
 	ubyte * normcount = p+20;
-	vec3d *src = vp(p+offset);
+	vec3 *src = (vec3*)(p+offset);
 
 	model_allocate_interp_data(nverts, n_norms, 0);
 

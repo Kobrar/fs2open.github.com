@@ -85,14 +85,25 @@ typedef struct vec4 {
 /** Represents a point in 3d space.
 
 Note: this is a struct, not a class, so no member functions. */
-typedef struct vec3d {
+typedef struct vec3d vec3d;
+
+typedef struct vec3 {
 	union {
 		struct {
-			float x,y,z;
+			float x, y, z;
 		} xyz;
 		float a1d[3];
 	};
-} vec3d;
+} vec3;
+
+struct vec3d {
+	union {
+		struct {
+			float x,y,z,w;
+		} xyz;
+		float a1d[4];
+	};
+};
 
 /** Compares two vec3ds */
 inline bool operator==(const vec3d &self, const vec3d &other)
@@ -114,10 +125,10 @@ typedef struct angles {
 typedef struct matrix {
 	union {
 		struct {
-			vec3d	rvec, uvec, fvec;
+			vec3d	rvec, uvec, fvec, pos;
 		} vec;
-		float a2d[3][3];
-		float a1d[9];
+		float a2d[4][4];
+		float a1d[16];
 	};
 } matrix;
 
