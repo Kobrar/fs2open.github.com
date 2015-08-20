@@ -73,7 +73,7 @@ void camera::reset()
 	pos_y.clear();
 	pos_z.clear();
 
-	for(int i = 0; i < 9; i++)
+	for(int i = 0; i < 16; i++)
 	{
 		ori[i].clear();
 		ori[i].set(vmd_identity_matrix.a1d[i]);
@@ -199,7 +199,7 @@ void camera::set_rotation(matrix *in_orientation, float in_rotation_time, float 
 	if(in_orientation != NULL && in_rotation_time == 0.0f && in_rotation_acceleration_time == 0.0f && in_rotation_deceleration_time == 0.0f)
 	{
 		c_ori = *in_orientation;
-		for(int i = 0; i < 9; i++)
+		for(int i = 0; i < 16; i++)
 			ori[i].set(in_orientation->a1d[i]);
 		flags |= CAM_STATIONARY_ORI;
 		return;
@@ -208,12 +208,12 @@ void camera::set_rotation(matrix *in_orientation, float in_rotation_time, float 
 	flags &= ~CAM_STATIONARY_ORI;
 	if(in_orientation == NULL)
 	{
-		for(int i = 0; i < 9; i++)
+		for(int i = 0; i < 16; i++)
 			ori[i].setVD(in_rotation_time, in_rotation_acceleration_time, 0.0f);
 		return;
 	}
 
-	for(int i = 0; i < 9; i++)
+	for(int i = 0; i < 16; i++)
 		ori[i].setAVD(in_orientation->a1d[i], in_rotation_time, in_rotation_acceleration_time, in_rotation_deceleration_time, 0.0f);
 }
 
@@ -413,7 +413,7 @@ void camera::get_info(vec3d *position, matrix *orientation)
 			matrix mtxA = c_ori;
 			matrix mtxB = IDENTITY_MATRIX;
 			float pos = 0.0f;
-			for(int i = 0; i < 9; i++)
+			for(int i = 0; i < 16; i++)
 			{
 				ori[i].get(&pos, NULL);
 				mtxB.a1d[i] = pos;

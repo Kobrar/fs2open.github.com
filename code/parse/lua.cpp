@@ -447,7 +447,7 @@ ADE_FUNC(getInterpolated, l_Matrix, "orientation Final, number Factor", "Returns
 	matrix final = vmd_identity_matrix;
 
 	//matrix subtraction & scaling
-	for(int i = 0; i < 9; i++)
+	for(int i = 0; i < 16; i++)
 	{
 		final.a1d[i] = A->a1d[i] + (B->a1d[i] - A->a1d[i])*factor;
 	}
@@ -12179,7 +12179,7 @@ ADE_FUNC(error, l_Base, "string Message", "Displays a FreeSpace error message wi
 ADE_FUNC(createOrientation, l_Base, "[p/r1c1, b/r1c2, h/r1c3, r2c1, r2c2, r2c3, r3c1, r3c2, r3c3]", "Given 0, 3, or 9 arguments, creates an orientation object with that orientation.", "orientation", "New orientation object, or null orientation on failure")
 {
 	matrix m;
-	int numargs = ade_get_args(L, "|fffffffff", &m.a1d[0], &m.a1d[1], &m.a1d[2], &m.a1d[3], &m.a1d[4], &m.a1d[5], &m.a1d[6], &m.a1d[7], &m.a1d[8]);
+	int numargs = ade_get_args(L, "|fffffffff", &m.a1d[0], &m.a1d[1], &m.a1d[2], &m.a1d[4], &m.a1d[5], &m.a1d[6], &m.a1d[8], &m.a1d[9], &m.a1d[10]);
 	if(!numargs)
 	{
 		return ade_set_args(L, "o", l_Matrix.Set( matrix_h(&vmd_identity_matrix) ));
