@@ -24,9 +24,9 @@
 #define	CONVERT_RADIANS	0.017453		// conversion factor from degrees to radians
 
 vec3d vmd_zero_vector = ZERO_VECTOR;
-vec3d vmd_x_vector = { { { 1.0f, 0.0f, 0.0f } } };
-vec3d vmd_y_vector = { { { 0.0f, 1.0f, 0.0f } } };
-vec3d vmd_z_vector = { { { 0.0f, 0.0f, 1.0f } } };
+vec3d vmd_x_vector = { { { 1.0f, 0.0f, 0.0f, 0.0f } } };
+vec3d vmd_y_vector = { { { 0.0f, 1.0f, 0.0f, 0.0f } } };
+vec3d vmd_z_vector = { { { 0.0f, 0.0f, 1.0f, 0.0f } } };
 matrix vmd_identity_matrix = IDENTITY_MATRIX;
 
 #define	UNINITIALIZED_VALUE	-12345678.9f
